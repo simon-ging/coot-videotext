@@ -2,6 +2,8 @@
 
 Code for the above paper released at the 34th Conference on Neural Information Processing Systems (NeurIPS 2020), Vancouver, Canada.
 
+![Method](assets/thumbnail_big.png)
+
 ## Roadmap
 
 ### Current Version
