@@ -1,0 +1,13 @@
+runs/
+data/
+pretrained_bert_model/
+provided_models/
+.idea/
+*/.idea/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pth
+*.log
+*.tar.gz
+*.npz
