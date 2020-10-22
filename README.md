@@ -19,10 +19,11 @@ Requires `Python>=3.6`, `PyTorch>=1.4`. Tested on Ubuntu. At least 8GB of free R
 
 ## Installation
 
-1. Setup Python 3.6.8 and PyTorch 1.4.0, installation depends on your OS and setup. We use Ubuntu 16.02, setup Python in a virtual environment (package [virtualenv](https://virtualenv.pypa.io/en/stable/)) and install PyTorch with pip as described at [pytorch.org](https://pytorch.org/)
-1. `cd` into this repository's root folder
-1. Install requirements `pip install -r requirements.txt`
-1. All future commands in this Readme assume current working directory is the root of this repository
+1. Install Python and PyTorch
+1. Clone repository: `git clone https://github.com/gingsi/coot-videotext`
+1. Set working directory to be inside the repository: `cd coot-videotext`
+1. Install other requirements `pip install -r requirements.txt`
+1. All future commands in this Readme assume that the current working directory is the root of this repository
 
 ## Prepare datasets
 
