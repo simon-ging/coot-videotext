@@ -125,6 +125,12 @@ The default datasets folder is `data/`. To use a different folder, copy the data
 - Activitynet and Youcook2
     - Add [CLS] at the start of each paragraph and [SEP] at the end of each sentence before encoding with Bert model.
 
-## References
+## Citation
 
-Code references / license etc. will be provided on public code release.
+Publication pending.
+
+## License
+
+This code is licensed under Apache2, see LICENSE file.
+
+Copyright 2020 S. Ging
