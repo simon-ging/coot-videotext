@@ -1,16 +1,26 @@
 # COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning
 
-Code for the above paper released at the 34th Conference on Neural Information Processing Systems (NeurIPS 2020), Vancouver, Canada.
+This repository is the official PyTorch implementation of our [paper](https://arxiv.org/abs/2011.00597) which will be published at NeurIPS 2020.
 
-![Method](assets/thumbnail_big.png)
+<!-- Check our [slides](assets/slides_coot.pdf) or [poster](assets/poster_coot.pdf) for a short overview. -->
 
-## Roadmap
+<p align="center"><img src="assets/logo.png" alt="Logo" title="Logo" /></p>
 
-### Current Version
+<!-- ![Logo](assets/logo.png) -->
+
+## Model Outline
+
+<p align="center"><img src="assets/thumbnail.png" alt="Method" title="Method" /></p>
+
+<!-- ![Method](assets/thumbnail.png) -->
+
+## Development Roadmap
+
+### Current version features
 
 - Reproduce the evaluation results on Video-Text Retrieval either with the provided models or by training them from scratch. Configurations and weights for the COOT models described in tables 2 and 3 of the paper are provided.
 
-### Planned
+### Planned features
 
 - Reproduce the results on Video Captioning described in tables 4 and 5.
 - Improve code to make it easier to input a custom dataset.
@@ -82,7 +92,7 @@ tar -xzvf provided_models.tar.gz
 
 ###  Script flags
 
-~~~
+~~~bash
 --preload_vid  # preload video features to RAM (~110GB RAM needed for activitynet, 60GB for youcook2 resnet/resnext, 20GB for youcook2 howto100m)
 --workers N    # change number of parallel dataloader workers, default: min(10, N_CPU - 1)
 --cuda         # run on GPU
@@ -97,20 +107,42 @@ tar -xzvf provided_models.tar.gz
 
 ### Table 2: Video-paragraph retrieval results on AcitvityNet-captions dataset (val1).
 
-| Model | Paragraph->Video R@1 | R@5  | R@50 | Video->Paragraph R@1 | R@5  | R@50 | Command to train from scratch                                | Command to evaluate provided model                           | Train time |
-| ----- | -------------------- | ---- | ---- | -------------------- | ---- | ---- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------- |
-| COOT  | 61.3                 | 86.7 | 98.7 | 60.6                 | 87.9 | 98.7 | `python train.py config/anet_coot.yaml --cuda --log_dir runs/anet_coot` | `python eval.py config/anet_coot.yaml provided_models/anet_coot.pth --cuda --workers 10` | ~70min     |
+~~~bash
+# train from scratch
+python train.py config/anet_coot.yaml --cuda --log_dir runs/anet_coot
+
+# evaluate provided model
+python eval.py config/anet_coot.yaml provided_models/anet_coot.pth --cuda --workers 10
+~~~
+
+| Model | Paragraph->Video R@1 | R@5  | R@50 | Video->Paragraph R@1 | R@5  | R@50 | Train time |
+| ----- | -------------------- | ---- | ---- | -------------------- | ---- | ---- | ---------- |
+| COOT  | 61.3                 | 86.7 | 98.7 | 60.6                 | 87.9 | 98.7 | ~70min     |
 
 ### Table 3: Retrieval Results on Youcook2 dataset
 
-| Model                             | Paragraph->Video R@1 | R@5  | R@10  | MR   | Sentence->Clip R@1 | R@5  | R@50 | MR   | Command to train from scratch                                | Command to evaluate provided model                           | Train time |
-| --------------------------------- | -------------------- | ---- | ----- | ---- | ------------------ | ---- | ---- | ---- | ------------------------------------------------------------ | ------------------------------------------------------------ | ---------- |
-| COOT with Resnet/Resnext features | 51.2                 | 79.9 | 88.20 | 1    | 6.6                | 17.3 | 25.1 | 48   | `python train.py config/yc2_2d3d_coot.yaml --cuda --log_dir runs/yc2_2d3d_coot` | `python eval.py config/yc2_2d3d_coot.yaml provided_models/yc2_2d3d_coot.pth --cuda` | ~180min    |
-| COOT with Howto100m features      | 78.3                 | 96.2 | 97.8  | 1    | 16.9               | 40.5 | 52.5 | 9    | `python train.py config/yc2_100m_coot.yaml --cuda --log_dir runs/yc2_100m_coot` | `python eval.py config/yc2_100m_coot.yaml provided_models/yc2_100m_coot.pth --cuda` | ~16 min    |
+~~~bash
+# train from scratch (row 1, model with ResNet/ResNext features)
+python train.py config/yc2_2d3d_coot.yaml --cuda --log_dir runs/yc2_2d3d_coot
+
+# evaluate provided model (row 1)
+python eval.py config/yc2_2d3d_coot.yaml provided_models/yc2_2d3d_coot.pth --cuda
+
+# train from scratch (row 2, model with HowTo100m features)
+python train.py config/yc2_100m_coot.yaml --cuda --log_dir runs/yc2_100m_coot
+
+# evaluate provided model (row 2)
+python eval.py config/yc2_100m_coot.yaml provided_models/yc2_100m_coot.pth --cuda
+~~~
+
+| Model                             | Paragraph->Video R@1 | R@5  | R@10  | MR   | Sentence->Clip R@1 | R@5  | R@50 | MR   | Train time |
+| --------------------------------- | -------------------- | ---- | ----- | ---- | ------------------ | ---- | ---- | ---- | ---------- |
+| COOT with ResNet/ResNeXt features | 51.2                 | 79.9 | 88.20 | 1    | 6.6                | 17.3 | 25.1 | 48   | ~180min    |
+| COOT with HowTo100m features      | 78.3                 | 96.2 | 97.8  | 1    | 16.9               | 40.5 | 52.5 | 9    | ~16 min    |
 
 ## Additional information
 
-The default datasets folder is `data/`. To use a different folder, copy the data folder, supply all python scripts with flag `--dataroot new_path` and change the commands for dataset preprocessing accordingly.
+The default datasets folder is `data/`. To use a different folder, supply all python scripts with flag `--dataroot new_path` and change the commands for dataset preprocessing accordingly.
 
 ### Preprocessing steps, done automatically
 
@@ -125,12 +157,29 @@ The default datasets folder is `data/`. To use a different folder, copy the data
 - Activitynet and Youcook2
     - Add [CLS] at the start of each paragraph and [SEP] at the end of each sentence before encoding with Bert model.
 
-## Citation
+## Acknowledgements
 
-Publication pending.
+For the full references see our [paper](https://arxiv.org/abs/2011.00597). We especially thank the creators of the following github repositories for providing helpful code:
+
+- [CMHSE](https://github.com/zbwglory/CMHSE) for retrieval code
+- [MART](https://github.com/jayleicn/recurrent-transformer) for captioning model and code
+
+Credit of the bird image to [Laurie Boyle](https://www.flickr.com/photos/92384235@N02/10551357354/) - Australia.
 
 ## License
 
-This code is licensed under Apache2, see LICENSE file.
+This code is licensed under Apache2 (Copyright 2020 S. Ging)
 
-Copyright 2020 S. Ging
+## Citation
+
+If you find our work or code useful, please consider citing our paper:
+
+~~~
+@inproceedings{ging2020coot,
+  title={COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning},
+  author={Simon Ging and Mohammadreza Zolfaghari and Hamed Pirsiavash and Thomas Brox},
+  booktitle={Conference on Neural Information Processing Systems},
+  year={2020}
+}
+~~~
+
