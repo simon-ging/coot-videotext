@@ -22,6 +22,7 @@ This repository is the official PyTorch implementation of our [paper](https://ar
 
 ### Planned features
 
+- Upload COOT feature output. See [this issue](https://github.com/gingsi/coot-videotext/issues/4) for an explanation on how to extract them yourself with this version.
 - Reproduce the results on Video Captioning described in tables 4 and 5.
 - Improve code to make it easier to input a custom dataset.
 
