@@ -11,3 +11,5 @@ __pycache__/
 *.log
 *.tar.gz
 *.npz
+
+*_coot.pdf

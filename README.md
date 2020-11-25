@@ -41,52 +41,66 @@ Requires `Python>=3.6`, `PyTorch>=1.4`. Tested on Ubuntu. At least 8GB of free R
 
 ### ActivityNet Captions
 
+**Download**: Please download the file via P2P using [this torrent](https://academictorrents.com/details/0c824440c94cc18ace1cb2c77423919b728d703e) and kindly keep seeding after you are done. See Troubleshoot / Downloading torrents below for help.
+
+**Alternative google drive download:** [Download Link](https://drive.google.com/file/d/13ZnIfBRShld8KOKJV3kpOLJPFkl12V9J/view?usp=sharing) or [Mirror Link](https://drive.google.com/file/d/1Gir-cRLhVpqjyADq55r5VF9Cs9YdOOz9/view?usp=sharing)
+
 ~~~bash
-# 1) download / extract features (55GB zipped)
-bash dl_gdrive.sh 13ZnIfBRShld8KOKJV3kpOLJPFkl12V9J data/activitynet/ICEP_V3_global_pool_skip_8_direct_resize.tar.gz
+# 1) download ~52GB zipped features to data/activitynet/
+# 2) unzip
+# after extraction, the folder structure should look like this:
+# data/activitynet/features/ICEP_V3_global_pool_skip_8_direct_resize/v_XXXXXXXXXXX.npz
 tar -C data/activitynet/features -xvzf data/activitynet/ICEP_V3_global_pool_skip_8_direct_resize.tar.gz
-# 2) preprocess dataset and compute bert features
+# 3) preprocess dataset and compute bert features
 python prepare_activitynet.py
 python run_bert.py activitynet --cuda
 ~~~
 
-**Alternative manual download:** [Download Link](https://drive.google.com/file/d/13ZnIfBRShld8KOKJV3kpOLJPFkl12V9J/view?usp=sharing) or [Mirror Link](https://drive.google.com/file/d/1Gir-cRLhVpqjyADq55r5VF9Cs9YdOOz9/view?usp=sharing) and extract such that the folder structure is `data/activitynet/features/ICEP_V3_global_pool_skip_8_direct_resize/v_XXXXXXXXXXX.npz`
-
 ### Youcook2 with ImageNet/Kinetics Features
 
+**Download**: Please download the file via P2P using [this torrent](https://academictorrents.com/details/3ae97c261ed32d3bd5326d3bf6991c9e2ea3dc17) and kindly keep seeding after you are done. See Troubleshoot / Downloading torrents below for help.
+
+**Alternative google drive download:** [Download Link](https://drive.google.com/file/d/1q7QocJq3mDJU0VxqJRZhSbqdtPerC4PS/view?usp=sharing) 
+
 ~~~bash
-# 1) download / extract 13GB features
-bash dl_gdrive.sh 1q7QocJq3mDJU0VxqJRZhSbqdtPerC4PS data/youcook2/video_feat_2d3d.tar.gz
+# 1) download ~13GB zipped features to data/youcook2/
+# 2) unzip
 tar -C data/youcook2 -xzvf data/youcook2/video_feat_2d3d.tar.gz
+# after extraction, the folder structure should look like this:
+# data/youcook2/video_feat_2d3d.h5
 # 2) preprocess dataset and compute bert features
 python prepare_youcook2.py
 python run_bert.py youcook2 --cuda --metadata_name 2d3d
 ~~~
 
-**Alternative manual download:** [Download](https://drive.google.com/file/d/1q7QocJq3mDJU0VxqJRZhSbqdtPerC4PS/view?usp=sharing)  and extract to `data/youcook2/video_feat_2d3d.h5`
-
 ### Youcook2 with Howto100m features
 
+**Download**: Please download the file via P2P using [this torrent](https://academictorrents.com/details/70417e3793dbbb03ca68981307860254766d5a1d) and kindly keep seeding after you are done. See Troubleshoot / Downloading torrents below for help.
+
+**Alternative google drive download:** [Download Link](https://drive.google.com/file/d/1oWSg7mvZE2kP_Ig4-OdNjRPAMqDghwag/view?usp=sharing)
+
 ~~~bash
-# 1) download / extract features (700MB)
-bash dl_gdrive.sh 1oWSg7mvZE2kP_Ig4-OdNjRPAMqDghwag data/youcook2/video_feat_100m.tar.gz
+# 1) download ~623MB zipped features to data/youcook2/
+# 2) unzip
 tar -C data/youcook2 -xzvf data/youcook2/video_feat_100m.tar.gz
-# 2) preprocess dataset and compute bert features
+# after extraction, the folder structure should look like this:
+# data/youcook2/video_feat_100m.h5
+# 3) preprocess dataset and compute bert features
 python prepare_youcook2.py --howto100m
 python run_bert.py youcook2 --cuda --metadata_name 100m
 ~~~
 
-**Alternative manual download:** [Download](https://drive.google.com/file/d/1oWSg7mvZE2kP_Ig4-OdNjRPAMqDghwag/view?usp=sharing)  and extract to `data/youcook2/video_feat_100m.h5` 
-
 ## Download provided models for evaluation
 
-~~~bash
-# 1) download / extract models (100MB)
-bash dl_gdrive.sh 1JPN8v3sz4rRvqo5CB76lrOdCh6kSDkg4 provided_models.tar.gz
-tar -xzvf provided_models.tar.gz
-~~~
+**Google drive download:** [Download Link](https://drive.google.com/file/d/1JPN8v3sz4rRvqo5CB76lrOdCh6kSDkg4/view?usp=sharing)
 
-**Alternative manual download:** [Download](https://drive.google.com/file/d/1JPN8v3sz4rRvqo5CB76lrOdCh6kSDkg4/view?usp=sharing) and extract to `provided_models/MODEL_NAME.pth`
+~~~bash
+# 1) download ~100mb zipped models
+# 2) unzip
+tar -xzvf provided_models.tar.gz
+# after extraction, the folder structure should look like this:
+# provided_models/MODEL_NAME.pth
+~~~
 
 ## Run
 
@@ -157,18 +171,39 @@ The default datasets folder is `data/`. To use a different folder, supply all py
 - Activitynet and Youcook2
     - Add [CLS] at the start of each paragraph and [SEP] at the end of each sentence before encoding with Bert model.
 
+## Troubleshoot
+
+### Downloading Torrents
+
+If you have problems downloading our torrents, try following this tutorial:
+
+1. Download and install the torrent client qBittorrent.
+1. Download the torrent files from the links and open them with qBittorrent.
+1. Options -> Advanced, check the fields "Always announce to all trackers in a tier" and "Always announce to all tiers".
+1. Options -> BitTorrent, disable "Torrent Queueing"
+1. Options -> Connection, disable "Use UPnp..." and everything under "Connection Limits" and set Proxy Server to "(None)"
+1. Options -> Speed, make sure speed is unlimited.
+1. Right click your torrent and "Force reannounce"
+1. Right click your torrent and "Force resume"
+1. Let it run for at least 24 hours.
+1. If it still doesn't download after waiting for an hour, feel free to open an issue.
+1. Once you are done, please keep seeding.
+
 ## Acknowledgements
 
 For the full references see our [paper](https://arxiv.org/abs/2011.00597). We especially thank the creators of the following github repositories for providing helpful code:
 
-- [CMHSE](https://github.com/zbwglory/CMHSE) for retrieval code
-- [MART](https://github.com/jayleicn/recurrent-transformer) for captioning model and code
+- Zhang et al. for retrieval code and activitynet-densecaptions features: [CMHSE](https://github.com/zbwglory/CMHSE) 
+- Wang et al. for their captioning model and code: [MART](https://github.com/jayleicn/recurrent-transformer) 
+- Miech et al. for their [Video feature extractor](https://github.com/antoine77340/video_feature_extractor) and their [HowTo100M Model](https://github.com/antoine77340/MIL-NCE_HowTo100M)
+
+We also thank the authors of all packages in the `requirements.txt` file.
 
 Credit of the bird image to [Laurie Boyle](https://www.flickr.com/photos/92384235@N02/10551357354/) - Australia.
 
 ## License
 
-This code is licensed under Apache2 (Copyright 2020 S. Ging)
+Code is licensed under Apache2 (Copyright 2020 S. Ging). Dataset features are licensed under Apache2 (Copyright to the respective owners).
 
 ## Citation
 
