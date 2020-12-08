@@ -1,12 +1,8 @@
 # COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning
 
-This repository is the official PyTorch implementation of our [paper](https://arxiv.org/abs/2011.00597) which will be published at NeurIPS 2020.
-
-<!-- Check our [slides](assets/slides_coot.pdf) or [poster](assets/poster_coot.pdf) for a short overview. -->
-
 <p align="center"><img src="assets/logo.png" alt="Logo" title="Logo" /></p>
 
-<!-- ![Logo](assets/logo.png) -->
+This repository is the official PyTorch implementation of our [paper](https://arxiv.org/abs/2011.00597) published at NeurIPS 2020 in a [Poster Session](https://neurips.cc/virtual/2020/protected/poster_ff0abbcc0227c9124a804b084d161a2d.html) at 09 Dec 2020, 06:00 AM CET. Check our [slides](assets/slides_coot.pdf) or [poster](assets/poster_coot.pdf) for a short overview.
 
 ## Model Outline
 

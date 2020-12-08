@@ -92,7 +92,7 @@ def main():
         input_tensor = torch.tensor(flat_paragraph).long().unsqueeze(0)
         if args.cuda:
             input_tensor = input_tensor.cuda()
-        # _, _, layer_output = model(input_tensor)
+        # _, _, layer_output = model(input_tensor) # transformers package update broke this
         model_output = model(input_tensor)
         layer_output = model_output["hidden_states"]
         features = []
