@@ -60,8 +60,8 @@ def main():
         total_len = 0
         for list_of_words in paragraph:
             sentence = " ".join(list_of_words)
-            sentence_int_tokens = tokenizer.encode(
-                sentence, add_special_tokens=False)
+            # print(tokenizer.tokenize(sentence, add_special_tokens=False))
+            sentence_int_tokens = tokenizer.encode(sentence, add_special_tokens=False)
             sent_tokens.append(sentence_int_tokens)
             total_len += len(sentence_int_tokens)
         if total_len > 512:
@@ -92,7 +92,9 @@ def main():
         input_tensor = torch.tensor(flat_paragraph).long().unsqueeze(0)
         if args.cuda:
             input_tensor = input_tensor.cuda()
-        _, _, layer_output = model(input_tensor)
+        # _, _, layer_output = model(input_tensor)
+        model_output = model(input_tensor)
+        layer_output = model_output["hidden_states"]
         features = []
         for layer_num in layer_list_int:
             layer_features = layer_output[layer_num].squeeze(0)
