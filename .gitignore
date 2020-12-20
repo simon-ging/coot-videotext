@@ -1,7 +1,8 @@
-runs/
-data/
-pretrained_bert_model/
-provided_models/
+/debug/
+/runs/
+/data/
+/pretrained_bert_model/
+/provided_models/
 .idea/
 */.idea/
 __pycache__/

@@ -40,7 +40,7 @@ Requires `Python>=3.6`, `PyTorch>=1.4`. Tested on Ubuntu. At least 8GB of free R
 
 **Download**: Please download the file via P2P using [this torrent](https://academictorrents.com/details/0c824440c94cc18ace1cb2c77423919b728d703e) and kindly keep seeding after you are done. See Troubleshoot / Downloading torrents below for help.
 
-**Alternative google drive download:** [Download Link](https://drive.google.com/file/d/13ZnIfBRShld8KOKJV3kpOLJPFkl12V9J/view?usp=sharing) or [Mirror Link](https://drive.google.com/file/d/1Gir-cRLhVpqjyADq55r5VF9Cs9YdOOz9/view?usp=sharing)
+**Alternative google drive download:** [Download Link](https://drive.google.com/file/d/1Gir-cRLhVpqjyADq55r5VF9Cs9YdOOz9/view?usp=sharing)
 
 ~~~bash
 # 1) download ~52GB zipped features to data/activitynet/
