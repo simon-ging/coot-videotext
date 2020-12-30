@@ -1,7 +1,0 @@
-pyyaml
-easydict
-transformers
-h5py
-tqdm
-numpy
-nltk

@@ -1,14 +1,36 @@
-/debug/
-/runs/
-/data/
-/pretrained_bert_model/
-/provided_models/
+# ---------- repo-specific
+/data
+/experiments/
+
+# ---------- general
+
+# big files
+*.npz
+*.h5
+*.bin
+*.gz
+*.pkl
+*.pt
+*-ubyte
+
+# pycharm
 .idea/
 */.idea/
+
+# various temp files
+.directory
+nohup.out
+~$*.*
+.nfs*
+.DS_Store
+*.swp
+*.exe.stackdump
+.~lock.*
+
+# python
 __pycache__/
-*.py[cod]
-*$py.class
-*.pth
-*.log
-*.tar.gz
-*.npz
+.pytest_cache/
+.ipynb_checkpoints
+.mypy_cache/
+.dmypy.json
+dmypy.json
