@@ -21,8 +21,8 @@ def main():
     # setup dataset path
     path_data = args.data_path if args.data_path is not None else repo_config.DATA_PATH
     path_dataset = Path(path_data) / "activitynet"
-    print(f"Working on dataset path {path_dataset}")
-    captions_path = path_dataset / "captions"
+    captions_path = Path("annotations") / "activitynet"
+    print(f"Working on dataset path {path_dataset} captions from {captions_path}")
 
     # setup other paths
     meta_file = path_dataset / "meta_all.json"

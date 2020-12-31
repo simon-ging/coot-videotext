@@ -17,11 +17,11 @@
 
 We use `python=3.8.5a` and `pytorch=1.7.0`. Tested on `Windows 10` and `Ubuntu 18.04`.
 
-1. Install Python and PyTorch.
-1. Clone repository: `git clone https://github.com/gingsi/coot-videotext`
-1. Set working directory to be inside the repository: `cd coot-videotext`
-1. Install other requirements `pip install -r requirements.txt` (Note: We also provide `fixed_requirements.txt` with versions, in case any of the packages break in the future.)
-1. All future commands in this Readme assume that the current working directory is the root of this repository
+~~~bash
+git clone https://github.com/gingsi/coot-videotext
+cd coot-videotext
+pip install -r requirements.txt
+~~~
 
 ## Prepare datasets
 

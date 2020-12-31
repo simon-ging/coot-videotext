@@ -27,13 +27,14 @@ def main():
     # setup dataset path
     path_data = args.data_path if args.data_path is not None else repo_config.DATA_PATH
     path_dataset = Path(path_data) / "youcook2"
-    print(f"Working on dataset path {path_dataset}")
+    captions_path = Path("annotations") / "youcook2"
+    print(f"Working on dataset path {path_dataset} captions from {captions_path}")
 
     # setup other paths
     meta_file = path_dataset / "meta_all.json"
 
     # load input meta
-    meta_in_file = (path_dataset / "captions" / "youcookii_annotations_trainval.json")
+    meta_in_file = (captions_path / "youcookii_annotations_trainval.json")
     with meta_in_file.open("rt", encoding="utf8") as fh:
         meta_raw = json.load(fh)["database"]
 
