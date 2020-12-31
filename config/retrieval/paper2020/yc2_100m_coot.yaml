@@ -1,0 +1,177 @@
+description: "youcook2 with 100m features."
+random_seed: null
+config_type: "ret"
+# ---------- Training ----------
+train:
+    batch_size: 64
+    num_epochs: 100
+    loss_func: "contrastive"
+    contrastive_loss_config:
+        margin: 0.2
+        weight_high: 1.0
+        weight_high_internal: 1.0
+        weight_low: 1.0
+        weight_low_internal: 1.0
+        weight_context: 1.0
+        weight_context_internal: 0.0        
+    loss_cycle_cons: 0.001
+    clip_gradient: -1 # Deactivated by default since it takes ~200ms every train step.
+# ---------- Validation ----------
+val:
+    batch_size: 64
+    val_freq: 1
+    val_start: 3 #0
+    val_clips: true
+    val_clips_freq: 1
+    det_best_field: "val_clip_sent_score_at_1"
+    det_best_compare_mode: "max"
+    det_best_threshold_mode: "rel"
+    det_best_threshold_value: 1e-4
+    det_best_terminate_after: 16
+# ---------- Dataset / Dataloader ----------
+dataset_train:
+    name: "youcook2"
+    subset: "default"
+    data_type: "retrieval"
+    split: "train"
+    metadata_name: "all"
+    vid_feat_name: "video_feat_100m"
+    vid_feat_source: "h5"
+    vid_feat_dim: 512
+    text_feat_name: "text_feat_youcook2_meta_all_transformers_bert-base-uncased_-2,-1"
+    # text_feat_name: "text_feat_again"
+    # text_feat_name: "text_feat_default_new"
+    # text_feat_name: "text_feat_default"
+    text_feat_source: "h5"
+    text_feat_dim: 1536
+    min_frames: 1
+    max_frames: 80
+    use_clips: true
+    min_clips: 1
+    max_clips: -1
+    include_background: true
+    frames_noise: 0
+    words_noise: 0
+    text_preprocessing: "bert_paper"
+    max_datapoints: -1
+    shuffle: true
+    # video feature loading
+    add_stop_frame: 2
+    expand_segments: 0
+    # technical dataloading details
+    preload_vid_feat: false
+    preload_text_feat: false
+    pin_memory: true
+    num_workers: 4
+    drop_last: false
+dataset_val:
+    same_as: "dataset_train"
+    split: "val"
+    shuffle: false
+# ---------- Networks ----------
+net_video_local:
+    name: "transformer"
+    output_dim: 384
+    use_input_fc: true
+    input_fc_config:
+        output_dim: 384
+        num_layers: 1
+        hidden_dim: 0
+        activation_middle: "none"
+        activation_output: "gelu"
+        dropout_middle: 0
+        dropout_output: 0
+        norm_middle: "none"
+        norm_output: "none"
+        residual: "none"
+    positional_encoding: "sincos"
+    add_local_cls_token: false
+    # local_cls_token_init_type: truncated_normal
+    # local_cls_token_init_std: 0.01
+    dropout_input: 0
+    norm_input: "layernorm_coot"
+    selfatn_config:
+        hidden_dim: 384
+        num_layers: 1
+        num_heads: 8
+        pointwise_ff_dim: 384
+        activation: "gelu"
+        dropout: 0.05
+        norm: "layernorm_coot"
+    use_context: false
+    use_output_fc: false
+    pooler_config:
+        name: atn
+        hidden_dim: 768
+        num_heads: 2
+        num_layers: 1
+        dropout: 0.05
+        activation: "gelu"
+    weight_init_type: "truncnorm"
+    weight_init_std: 0.01
+net_video_global:
+    name: "transformer"
+    # copy all settings from the local network
+    same_as: "net_video_local"
+    # then overwrite some of the settings
+    output_dim: 768
+    use_input_fc: false
+    input_fc_config: null # null this since it's not used anymore
+    use_context: true
+    crossatn_config:
+        hidden_dim: 384
+        num_layers: 1
+        num_heads: 8
+        pointwise_ff_dim: 384
+        activation: "gelu"
+        dropout: 0.05
+        norm: "layernorm_coot"
+    pooler_config:
+        name: "avg_special"
+# symmetric network setup for text and video
+net_text_local:
+    same_as: "net_video_local"
+net_text_global:
+    same_as: "net_video_global"
+# ---------- Optimizer ----------
+optimizer:
+    name: "radam"
+    lr: 9e-4
+    weight_decay: 0
+    weight_decay_for_bias: true
+    momentum: 0.56
+    sgd_nesterov: false
+    adam_beta2: 0.98
+    adam_eps: 1.5e-09
+    adam_amsgrad: false
+    radam_degentosgd: false
+    lr_decay_mult: false
+# ---------- LR Scheduler ----------
+lr_scheduler:
+    name: "reduce_opw"
+    warmup_type: "epoch"
+    warmup_epochs: 0
+    rop_factor: 0.1
+    rop_patience: 5
+    rop_cooldown: 3
+    rop_min_lr_factor: 0
+# ---------- Logging / Saving ----------
+logging:
+    step_train: 10
+    step_val: 10
+    step_gpu: -1
+    step_gpu_once: 10
+saving:
+    keep_freq: -1
+    save_last: true
+    save_best: true
+    save_opt_state: true
+# ---------- Technical PyTorch settings ----------
+use_cuda: true
+use_multi_gpu: true
+cudnn_enabled: true
+cudnn_benchmark: true
+cudnn_deterministic: false
+cuda_non_blocking: true
+fp16_train: true
+fp16_val: true

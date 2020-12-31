@@ -1,0 +1,84 @@
+description: "On MNIST, test if everything is deterministic."
+random_seed: 0
+config_type: "mm"
+# ---------- Training ----------
+train:
+    batch_size: 64
+    num_epochs: 3
+    loss_func: "crossentropy"
+    clip_gradient: -1 # deactivated by default since it takes ~200ms every train step.
+# ---------- Validation ----------
+val:
+    batch_size: 64
+    val_freq: 1
+    val_start: 3
+    det_best_field: "val_accuracy"
+    det_best_compare_mode: "max"
+    det_best_threshold_mode: "rel"
+    det_best_threshold_value: 1e-4
+    det_best_terminate_after: 16
+# ---------- Dataset / Dataloader ----------
+dataset_train:
+    name: "mnist"
+    subset: "default"
+    data_type: "custom"
+    split: "train"
+    shuffle: true
+    # technical dataloading details
+    pin_memory: false # true # may lead to dataloaders crashing
+    num_workers: 2 # n_cpu - 1
+    drop_last: false
+    max_datapoints: 6400
+dataset_val:
+    same_as: "dataset_train"
+    split: "val"
+    shuffle: false
+# ---------- Networks ----------
+mlp:
+    input_dim: 784
+    num_classes: 10
+    num_layers: 2
+    activation: "gelu"
+    hidden_dim: 30
+# ---------- Optimizer ----------
+optimizer:
+    name: "adam"
+    lr: 1e-3
+    weight_decay: 0
+    weight_decay_for_bias: true
+    momentum: 0.9
+    sgd_nesterov: false
+    adam_beta2: 0.999
+    adam_eps: 1e-8
+    adam_amsgrad: false
+    radam_degentosgd: false
+    lr_decay_mult: false
+# ---------- LR Scheduler ----------
+lr_scheduler:
+    name: "reduce_opw"
+    warmup_type: "epoch"
+    warmup_epochs: 0
+    rop_factor: 0.1
+    rop_patience: 5
+    rop_cooldown: 3
+    rop_min_lr_factor: 0
+# ---------- Logging / Saving ----------
+logging:
+    step_train: 100
+    step_val: 10
+    step_gpu: -1
+    step_gpu_once: 10
+saving:
+    keep_freq: -1
+    save_last: true
+    save_best: true
+    save_opt_state: true
+# ---------- Technical PyTorch settings ----------
+use_cuda: true
+use_multi_gpu: true
+cudnn_enabled: true
+cudnn_benchmark: false
+cudnn_deterministic: true
+cuda_non_blocking: true
+fp16_train: true
+fp16_val: true
