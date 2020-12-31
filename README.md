@@ -1,8 +1,8 @@
-# COOT Video-Text
+# COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning
 
-**2020, December** (v0.2.6):  We release our Deep-Learning Research Framework as open-source to contribute to the DL / CV community. [nntrainer library documentation](nntrainer/README.md)
+**2020-12-31** (v0.2.6):  We release our Deep-Learning Research Framework as open-source to contribute to the DL / CV community. [nntrainer library documentation](nntrainer/README.md)
 
-**2020, October** (v0.1): This repository is the official PyTorch implementation of our paper [COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning](https://arxiv.org/abs/2011.00597) published at NeurIPS 2020 ([slides](assets/slides_coot.pdf), [poster](assets/poster_coot.pdf), [poster session](https://neurips.cc/virtual/2020/protected/poster_ff0abbcc0227c9124a804b084d161a2d.html))
+**2020-10-22** (v0.1): This repository is the official PyTorch implementation of our paper [COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning](https://arxiv.org/abs/2011.00597) published at NeurIPS 2020 ([slides](assets/slides_coot.pdf), [poster](assets/poster_coot.pdf), [poster session](https://neurips.cc/virtual/2020/protected/poster_ff0abbcc0227c9124a804b084d161a2d.html))
 
 
 
