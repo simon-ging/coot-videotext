@@ -7,7 +7,8 @@ pyyaml # .yaml files
 gputil # gpu profiler
 psutil # ram profiler
 pydantic # typing extension
+pathspec # git-ignore like patterns
 pytest # unit tests
 mypy # typing
 pycodestyle # code style check. pycodestyle --max-line-length 120 .
-pathspec # git-ignore like patterns
+pylint # linter
