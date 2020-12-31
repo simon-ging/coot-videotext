@@ -1,5 +1,5 @@
 """
-Code from here https://github.com/dreamgonfly/Transformer-pytorch
+Transformer implementation.
 """
 
 from typing import Any, Dict, Optional, cast

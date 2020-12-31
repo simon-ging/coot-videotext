@@ -14,8 +14,8 @@ def test_profiling() -> None:
     # average / sum over all GPUs
     gpu_mem_used: float = sum(used_memory_per)
     gpu_mem_total: float = sum(total_memory_per)
-    gpu_mem_percent: float = gpu_mem_used / gpu_mem_total
-    load_avg: float = sum(load_per) / len(load_per)
+    gpu_mem_percent: float = gpu_mem_used / max(1, gpu_mem_total)
+    load_avg: float = sum(load_per) / max(1, len(load_per))
 
     print("Metrics.PROFILE_GPU_MEM_USED", gpu_mem_used)
     print("Metrics.PROFILE_GPU_MEM_TOTAL", gpu_mem_total)

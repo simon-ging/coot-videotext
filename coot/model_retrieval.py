@@ -1,7 +1,7 @@
 """
 Model manager for retrieval.
 
-COOT is 4 dlbase.models.TransformerLegacy
+COOT is 4 times dlbase.models.TransformerLegacy
 """
 
 import torch as th

@@ -1,53 +1,3 @@
-# # begin private
-# ---------- prerequisites -----------
-# # install pytorch and torchvision
-# # windows pip
-# pip install torch===1.7.0+cu110 torchvision===0.8.1+cu110 torchaudio===0.7.0 -f https://download.pytorch.org/whl/torch_stable.html
-# # windows conda
-# conda install pytorch torchvision torchaudio cudatoolkit=11.0 -c pytorch
-# # lmb conda, currently GPU drivers are old so stick to cuda 10.2
-# conda install pytorch torchvision cudatoolkit=10.2 -c pytorch
-# # install ffmpeg, through system (windows) or with conda (unix)
-# conda install ffmpeg -y
-
-# video editing
-# ffmpeg-python
-
-# # math
-# scikit-learn
-# scipy
-# matplotlib
-# jupyter
-
-# # utilities
-# easydict
-# wget
-
-# # images / videos / data
-# opencv-python
-# moviepy # videos from frames
-# gulpio
-# pytube
-
-# nltk # text processing
-# gensim # word2vec (text processing)
-# pytorch-swats # unused
-
-# adabound
-# adabelief-pytorch
-
-# # more typing
-# nptyping
-# tsalib
-
-# hpbandster # bohb
-
-# adabelief_pytorch
-
-# # end private
-
-# pytorch must be installed manually by the user
-
 tensorboard
 numpy
 transformers # huggingface transformers
@@ -57,7 +7,6 @@ pyyaml # .yaml files
 gputil # gpu profiler
 psutil # ram profiler
 pydantic # typing extension
-
 pytest # unit tests
 mypy # typing
 pycodestyle # code style check. pycodestyle --max-line-length 120 .
