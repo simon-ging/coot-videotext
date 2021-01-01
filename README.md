@@ -2,7 +2,29 @@
 
 <p align="center"><img src="assets/logo.png" alt="Logo" title="Logo" /></p>
 
-[TOC]
+## Table of Contents
+
+  * [Version History](#version-history)
+  * [Features](#features)
+  * [Installation](#installation)
+  * [Prepare datasets](#prepare-datasets)
+	 * [Precompute all the text features](#precompute-all-the-text-features)
+	 * [Download and extract video data](#download-and-extract-video-data)
+  * [Prepare pretrained models / embeddings](#prepare-pretrained-models--embeddings)
+  * [Train and validate](#train-and-validate)
+	 * [Useful script flags](#useful-script-flags)
+	 * [Show training results](#show-training-results)
+	 * [Advanced usage](#advanced-usage)
+  * [Extract your own embeddings](#extract-your-own-embeddings)
+	 * [Working with the embeddings](#working-with-the-embeddings)
+  * [Tables 2 &amp; 3](#tables-2--3)
+  * [Troubleshooting](#troubleshooting)
+	 * [Downloading Torrents](#downloading-torrents)
+	 * [Training / inference crashes](#training--inference-crashes)
+  * [Model Outline](#model-outline)
+  * [Acknowledgements](#acknowledgements)
+  * [License](#license)
+  * [Citation](#citation)
 
 ## Version History
 
