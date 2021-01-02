@@ -4,7 +4,7 @@
 
 **2020-10-22** (v0.1): This repository is the official PyTorch implementation of our [paper](https://arxiv.org/abs/2011.00597) published at NeurIPS 2020 ([slides](assets/slides_coot.pdf), [poster](assets/poster_coot.pdf), [poster session](https://neurips.cc/virtual/2020/protected/poster_ff0abbcc0227c9124a804b084d161a2d.html))
 
-![build](https://github.com/gingsi/coot-videotext/workflows/Python%20application/badge.svg?branch=master)
+![build](https://github.com/gingsi/coot-videotext/workflows/build/badge.svg)
 
 <p align="center"><img src="assets/logo.png" alt="Logo" title="Logo" /></p>
 
