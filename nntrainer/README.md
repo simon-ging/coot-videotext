@@ -119,6 +119,9 @@ python -m pytest
 python -m tests_nntrainer.integration_train
 python -m tests_nntrainer.integration_deter
 
+# Check test code coverage, v0.2.6 is 16%.
+python -m pytest --cov coot --cov nntrainer .
+
 # The pylinter should run at least without errors
 pylint -s n nntrainer coot tests_nntrainer tests_coot --init-hook "import sys; sys.path.append('.')"
 
