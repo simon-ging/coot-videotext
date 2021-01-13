@@ -87,7 +87,7 @@ tar -C data/youcook2 -xzvf data/youcook2/video_feat_100m.tar.gz
 
 ## Prepare pretrained models / embeddings
 
-**Models:** [Download Link](https://drive.google.com/file/d/1JPN8v3sz4rRvqo5CB76lrOdCh6kSDkg4/view?usp=sharing) ~100mb, **Embeddings:** [Download Link](https://drive.google.com/file/d/1oWSg7mvZE2kP_Ig4-OdNjRPAMqDghwag/view?usp=sharing) ~230mb
+**Models:** [Download Link](https://drive.google.com/file/d/1JPN8v3sz4rRvqo5CB76lrOdCh6kSDkg4/view?usp=sharing) ~100mb, **Embeddings:** [Download Link](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing) ~230mb
 
 ~~~bash
 tar -xzvf provided_models.tar.gz
@@ -134,7 +134,7 @@ python test_embeddings_retrieval.py provided_embeddings/yc2_100m_coot_val.h5
 # Show provided experiment results.
 python show_retrieval.py --log_dir provided_experiments --mean --compact
 # Output:
-# experiment (num) |       v2p-r1|       p2v-r1|       c2s-r1|       s2c-r1|  time (h)
+# experiment (num) |       v2p-r1|       p2v-r1|       c2s-r1|       s2c-r1|  time
 # -----------------|-------------|-------------|-------------|-------------|----------
 # anet_coot_run (3)|61.44% ±0.94%|61.56% ±0.82%| 0.00% ±0.00%| 0.00% ±0.00%|0.90 ±0.23
 # yc2_100m_run (3) |75.35% ±2.67%|73.96% ±2.09%|15.47% ±0.04%|16.64% ±0.19%|0.20 ±0.02
