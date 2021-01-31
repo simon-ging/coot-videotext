@@ -19,7 +19,7 @@ from coot import loss_fn, model_retrieval
 from coot.configs_retrieval import (
     CootMetersConst as CMeters, ExperimentTypesConst, RetrievalConfig, RetrievalTrainerState)
 from coot.dataset_retrieval import RetrievalDataBatchTuple
-from coot.loss_fn import ContrastiveLoss, CycleConsistencyLoss
+from coot.loss_fn import ContrastiveLoss, CycleConsistencyLoss, LossesConst
 from nntrainer import lr_scheduler, optimization, retrieval, trainer_base
 
 
@@ -73,8 +73,14 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
         # ---------- loss ----------
 
         # contrastive loss
-        assert self.cfg.train.loss_func == loss_fn.LossesConst.CONTRASTIVE
-        self.loss_contr = ContrastiveLoss(self.cfg.train.contrastive_loss_config.margin, use_cuda=self.cfg.use_cuda)
+        if self.cfg.train.loss_func == loss_fn.LossesConst.CONTRASTIVE:
+            self.loss_contr = ContrastiveLoss(self.cfg.train.contrastive_loss_config.margin, use_cuda=self.cfg.use_cuda)
+        elif self.cfg.train.loss_func == loss_fn.LossesConst.CROSSENTROPY:
+            self.loss_contr = CrossEntropyContrastiveLoss(self.cfg.train.contrastive_loss_config)
+        else:
+            raise NotImplementedError
+        if self.cfg.use_cuda:
+            self.loss_contr = self.loss_contr.cuda()
 
         # cycle consistency
         if self.cfg.train.loss_cycle_cons != 0:
@@ -180,6 +186,38 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
             loss += cfg.weight_low_internal * self.compute_cluster_loss(vid_context_norm, par_context_norm)
         return loss
 
+    def compute_total_ce_loss(self, visual_data: model_retrieval.RetrievalVisualEmbTuple,
+                              text_data: model_retrieval.RetrievalTextEmbTuple) -> th.Tensor:
+        """
+        Compute total contrastive loss depending on config.
+
+        Args:
+            visual_data: NamedTuple containing all computed visual embeddings.
+            text_data: NameTuple containing all computed text embeddings.
+
+        Returns:
+            Scalar contrastive loss.
+        """
+        # # normalize embeddings with L2-Normalization
+        # vid_context_norm = F.normalize(visual_data.vid_context)
+        # clip_emb_norm = F.normalize(visual_data.clip_emb)
+        # vid_emb_norm = F.normalize(visual_data.vid_emb)
+        # par_context_norm = F.normalize(text_data.par_context)
+        # sent_emb_norm = F.normalize(text_data.sent_emb)
+        # par_emb_norm = F.normalize(text_data.par_emb)
+
+        # sum weighted alignments and clustering losses
+        # cfg = self.cfg.train.contrastive_loss_config
+        losses = (self.loss_contr(visual_data.vid_emb, text_data.par_emb),
+                  self.loss_contr(visual_data.clip_emb, text_data.sent_emb))
+        # self.loss_contr(visual_data.vid_context, text_data.par_context))
+        cluster_losses = (0,)
+        # self.loss_contr(visual_data.vid_emb, text_data.par_emb),
+        # self.loss_contr(visual_data.clip_emb, text_data.sent_emb))
+        # self.compute_cluster_loss(vid_context_norm, par_context_norm)
+        self.logger.info(f"{self.state.total_step}: " + ("{:.3f} " * 3).format(*losses, *cluster_losses))
+        return sum(losses) + sum(cluster_losses)
+
     def compute_cyclecons_loss(self, visual_data: model_retrieval.RetrievalVisualEmbTuple,
                                text_data: model_retrieval.RetrievalTextEmbTuple) -> th.Tensor:
         """
@@ -231,7 +269,10 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
                 with autocast(enabled=self.cfg.fp16_train):
                     visual_data = self.model_mgr.encode_visual(batch)
                     text_data = self.model_mgr.encode_text(batch)
-                    contr_loss = self.compute_total_constrastive_loss(visual_data, text_data)
+                    if self.cfg.train.loss_func == LossesConst.CONTRASTIVE:
+                        contr_loss = self.compute_total_constrastive_loss(visual_data, text_data)
+                    elif self.cfg.train.loss_func == LossesConst.CROSSENTROPY:
+                        contr_loss = self.compute_total_ce_loss(visual_data, text_data)
                     cc_loss = self.compute_cyclecons_loss(visual_data, text_data)
                     loss = contr_loss + cc_loss
 
@@ -285,8 +326,13 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
             save_embs: Save embeddings to file
 
         Returns:
-            Tuple of validation loss, validation score, epoch is best and custom metrics: tuple of
-                video-paragraph retrieval, optional clip-sentence retrieval.
+            Tuple of:
+                validation loss
+                validation score
+                epoch is best
+                custom metrics, tuple of:
+                    video-paragraph retrieval
+                    optionally clip-sentence retrieval.
         """
         self.hook_pre_val_epoch()  # pre val epoch hook: set models to val and start timers
         forward_time_total = 0
@@ -325,7 +371,10 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
             with autocast(enabled=self.cfg.fp16_val):
                 visual_data = self.model_mgr.encode_visual(batch)
                 text_data = self.model_mgr.encode_text(batch)
-                contr_loss = self.compute_total_constrastive_loss(visual_data, text_data)
+                if self.cfg.train.loss_func == LossesConst.CONTRASTIVE:
+                    contr_loss = self.compute_total_constrastive_loss(visual_data, text_data)
+                elif self.cfg.train.loss_func == LossesConst.CROSSENTROPY:
+                    contr_loss = self.compute_total_ce_loss(visual_data, text_data)
                 contr_loss_total += contr_loss
                 cc_loss = self.compute_cyclecons_loss(visual_data, text_data)
                 cc_loss_total += cc_loss
@@ -352,8 +401,10 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
         # postprocess collected embeddings
         data_collector_norm = {}
         for key in collect_keys:
-            data_collector[key] = th.cat(data_collector[key], dim=0)
-            data_collector_norm[key] = F.normalize(data_collector[key])
+            data_collector[key] = th.cat(data_collector[key], dim=0).float()
+            # data_collector_norm[key] = F.normalize(data_collector[key])
+            data_collector_norm[key] = data_collector[key] / (data_collector[key] * data_collector[key]).sum(
+                dim=-1).sqrt().unsqueeze(-1)
 
         if save_embs:
             # save unnormalized embeddings

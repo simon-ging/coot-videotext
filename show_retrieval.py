@@ -1,7 +1,5 @@
 """
 Show retrieval results.
-
-Usage:
 """
 
 import re
@@ -9,7 +7,7 @@ import re
 from coot.configs_retrieval import CootMetersConst, ExperimentTypesConst
 from nntrainer import arguments, utils
 from nntrainer.view_results import (
-    PrintGroupConst, PrintMetric, collect_results_data, output_results)
+    PrintGroupConst, PrintMetric, collect_results_data, output_results, update_performance_profile)
 
 
 EXP_TYPE = ExperimentTypesConst.RETRIEVAL
@@ -35,6 +33,7 @@ def main():
     exp_groups_names = utils.match_folder(args.log_dir, EXP_TYPE, args.exp_group, args.exp_list, args.search)
     collector = collect_results_data(
         EXP_TYPE, exp_groups_names, log_dir=args.log_dir, read_last_epoch=args.last, add_group=args.add_group)
+    collector = update_performance_profile(collector)
 
     # ---------- Define the custom retrieval metrics to show for these experiments ----------
 
@@ -74,7 +73,7 @@ def main():
 
     # ---------- Define which metrics to print ----------
     default_metrics = []
-    default_fields = ["v2p-r1", "p2v-r1", "c2s-r1", "s2c-r1", "time (h)"]
+    default_fields = ["v2p-r1", "p2v-r1", "c2s-r1", "s2c-r1", "Time"]
     output_results(collector, custom_metrics=retrieval_metrics, metrics=args.metrics, default_metrics=default_metrics,
                    fields=args.fields, default_fields=default_fields, mean=args.mean, mean_all=args.mean_all,
                    sort=args.sort, sort_asc=args.sort_asc,

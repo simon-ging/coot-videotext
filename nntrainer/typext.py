@@ -64,7 +64,14 @@ class SaveableBaseModel(BaseModel):
         Args:
             file: Target json file.
         """
-        json.dump(self.dict(), Path(file).open("wt", encoding="utf8"))
+        try:
+            json.dump(self.dict(), Path(file).open("wt", encoding="utf8"))
+        except TypeError as e:
+            # something in the object is probably not JSON serializable.
+            print("---------- JSON encoding error! ----------")
+            for key, val in self.dict().items():
+                print(f"{key}: {type(val)}")
+            raise TypeError(f"See console output. JSON save to {file} failed.") from e
 
     def load(self, file: Union[str, Path]) -> SaveableBaseModel:
         """
@@ -194,6 +201,33 @@ class TypedNamedTuple(BaseModel):
             Model fields and values as dict.
         """
         return super().dict(**kwargs)
+
+    def keys(self) -> List[str]:
+        """
+        Get list of constant keys.
+
+        Returns:
+            Constant keys.
+        """
+        return self.dict().keys()
+
+    def items(self) -> List[str]:
+        """
+        Get list of constant keys.
+
+        Returns:
+            Constant keys.
+        """
+        return self.dict().items()
+
+    def values(self) -> List[Any]:
+        """
+        Return constant values.
+
+        Returns:
+            Constant values.
+        """
+        return self.dict().values()
 
     def validate_shapes(self):
         """

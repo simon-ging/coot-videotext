@@ -7,32 +7,39 @@ This automates the following:
     - Only save metrics where something was logged to.
 """
 
-import os
-import sys
-import json
-from typing import Dict, List, Optional, Any, Iterable, Mapping, Tuple, Union, Callable
-from pathlib import Path
-
-import numpy as np
-import torch as th
-from torch import nn
-from pprint import pprint
-import time
-from timeit import default_timer as timer
-from enum import Enum
-
 import json
 import logging
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Callable, Dict, List, Optional, Tuple, Union
 
-from torch.utils.tensorboard import SummaryWriter
 import torch as th
+from torch.utils.tensorboard import SummaryWriter
+
 from nntrainer import typext
 from nntrainer.experiment_organization import ExperimentFilesHandler
 from nntrainer.typext import ConstantHolder
 from nntrainer.utils import LOGGER_NAME
+
+
+class PrintGroupConst(typext.ConstantHolder):
+    """
+    Define metric groups. This is used for creating experiment tables.
+    """
+    BASE = "base"
+    PROFILE = "profile"
+    PERFORMANCE = "performance"
+
+
+class PrintMetric(typext.TypedNamedTuple):
+    """
+    Define named tuple for string formatting of metrics.
+    """
+    long_name: str
+    formatting: str
+    decimals: int
+    print_group: str
+    format_lambda: Optional[Callable[[float], float]]
 
 
 class DefaultMetricsConst(ConstantHolder):
@@ -59,25 +66,14 @@ class DefaultMetricsConst(ConstantHolder):
     PROFILE_RAM_TOTAL = "zram/total"
     PROFILE_RAM_USED = "zram/used"
     PROFILE_RAM_AVAILABLE = "zram/avail"
-
-
-class PrintGroupConst(typext.ConstantHolder):
-    """
-    Define metric groups. This is used for creating experiment tables.
-    """
-    BASE = "base"
-    PROFILE = "profile"
-
-
-class PrintMetric(typext.TypedNamedTuple):
-    """
-    Define named tuple for string formatting of metrics.
-    """
-    long_name: str
-    formatting: str
-    decimals: int
-    print_group: str
-    format_lambda: Optional[Callable[[float], float]]
+    # performance
+    PERF_GFLOPS = "perf/gflops"
+    PERF_PARAMS = "perf/params"
+    PERF_SPEED = "perf/speed"
+    # IDENTIFIER
+    EXP_GROUP = "exp_group"
+    EXP_NAME = "exp_name"
+    RUN_NAME = "run_name"
 
 
 DEFAULT_METRICS = {
@@ -86,10 +82,114 @@ DEFAULT_METRICS = {
     "score": PrintMetric(DefaultMetricsConst.VAL_BEST_FIELD, "f", 3, PrintGroupConst.BASE, None),
     "GPU mem": PrintMetric(DefaultMetricsConst.PROFILE_GPU_MEM_USED, "f", 0, PrintGroupConst.PROFILE, None),
     "GPU load": PrintMetric(DefaultMetricsConst.PROFILE_GPU_LOAD, "f", 1, PrintGroupConst.PROFILE, None),
-    "ram": PrintMetric(DefaultMetricsConst.PROFILE_RAM_USED, "f", 1, PrintGroupConst.PROFILE, None),
-    "time (h)": PrintMetric(DefaultMetricsConst.TIME_TOTAL, "f", 2, PrintGroupConst.PROFILE, lambda x: x / 3600)
+    "RAM": PrintMetric(DefaultMetricsConst.PROFILE_RAM_USED, "f", 1, PrintGroupConst.PROFILE, None),
+    "Time": PrintMetric(DefaultMetricsConst.TIME_TOTAL, "f", 2, PrintGroupConst.PROFILE, lambda x: x / 3600),
+    "GFlop": PrintMetric(DefaultMetricsConst.PERF_GFLOPS, "f", 3, PrintGroupConst.PERFORMANCE, None),
+    "MPar": PrintMetric(DefaultMetricsConst.PERF_PARAMS, "f", 2, PrintGroupConst.PERFORMANCE, lambda x: x / 1e6),
+    "InfMS": PrintMetric(DefaultMetricsConst.PERF_SPEED, "f", 2, PrintGroupConst.PERFORMANCE, None),
 }
 
+
+# ---------- Text metrics ----------
+
+class MartPrintGroupConst(PrintGroupConst):
+    TEXT = "text"
+
+
+class TextMetricsConst(ConstantHolder):
+    """
+    Text metrics names.
+    """
+    BLEU_1 = "cap/b1"
+    BLEU_2 = "cap/b2"
+    BLEU_3 = "cap/b3"
+    BLEU_4 = "cap/b4"
+    METEOR = "cap/met"
+    ROUGE_L = "cap/rol"
+    CIDER = "cap/cid"
+    RE1 = "cap/re1"
+    RE2 = "cap/re2"
+    RE3 = "cap/re3"
+    RE4 = "cap/re4"
+    SUBMISSION_VOCAB_SIZE = "cap/voc"
+    SUBMISSION_AVG_SEN_LEN = "cap/slen"
+    SUBMISSION_NUM_SEN = "cap/snum"
+    GT_STAT_VOCAB_SIZE = "capgt/voc"
+    GT_STAT_AVG_SEN_LEN = "capgt/slen"
+    GT_STAT_NUM_SEN = "capgt/snum"
+
+
+class TextMetricsConstEvalCap(ConstantHolder):
+    """
+    Text metrics names as provided by PyCocoEvalCap
+    """
+    BLEU_1 = "Bleu_1"
+    BLEU_2 = "Bleu_2"
+    BLEU_3 = "Bleu_3"
+    BLEU_4 = "Bleu_4"
+    METEOR = "METEOR"
+    ROUGE_L = "ROUGE_L"
+    CIDER = "CIDEr"
+    RE1 = "re1"
+    RE2 = "re2"
+    RE3 = "re3"
+    RE4 = "re4"
+    SUBMISSION_VOCAB_SIZE = "submission_vocab_size"
+    SUBMISSION_AVG_SEN_LEN = "submission_avg_sen_len"
+    SUBMISSION_NUM_SEN = "submission_num_sen"
+    GT_STAT_VOCAB_SIZE = "gt_stat_vocab_size"
+    GT_STAT_AVG_SEN_LEN = "gt_stat_avg_sen_len"
+    GT_STAT_NUM_SEN = "gt_stat_num_sen"
+
+
+# create mapper from pycocoevalcap results to tensorboard names
+keys1, keys2 = list(TextMetricsConst.keys()), list(TextMetricsConstEvalCap.keys())
+assert keys1 == keys2, (
+    f"Mismatch in text metrics definition, the constant holder classes must match.\n{keys1}\n-----\n{keys2}")
+TRANSLATION_METRICS = {TextMetricsConstEvalCap.get(key): name for key, name in TextMetricsConst.items()}
+
+# TRANSLATION_METRICS = {
+#     "Bleu_1": TextMetricsConst.BLEU_1,
+#     "Bleu_2": TextMetricsConst.BLEU_2,
+#     "Bleu_3": TextMetricsConst.BLEU_3,
+#     "Bleu_4": TextMetricsConst.BLEU_4,
+#     "METEOR": TextMetricsConst.METEOR,
+#     "ROUGE_L": TextMetricsConst.ROUGE_L,
+#     "CIDEr": TextMetricsConst.CIDER,
+#     "re1": TextMetricsConst.RE1,
+#     "re2": TextMetricsConst.RE2,
+#     "re3": TextMetricsConst.RE3,
+#     "re4": TextMetricsConst.RE4,
+#     "submission_vocab_size": TextMetricsConst.SUBMISSION_VOCAB_SIZE,
+#     "submission_avg_sen_len": TextMetricsConst.SUBMISSION_AVG_SEN_LEN,
+#     "submission_num_sen": TextMetricsConst.SUBMISSION_NUM_SEN,
+#     "gt_stat_vocab_size": TextMetricsConst.GT_STAT_VOCAB_SIZE,
+#     "gt_stat_avg_sen_len": TextMetricsConst.GT_STAT_AVG_SEN_LEN,
+#     "gt_stat_num_sen": TextMetricsConst.GT_STAT_NUM_SEN
+# }
+
+TEXT_METRICS = {
+    "bleu1": PrintMetric(TextMetricsConst.BLEU_1, "%", 2, MartPrintGroupConst.TEXT, None),
+    "bleu2": PrintMetric(TextMetricsConst.BLEU_2, "%", 2, MartPrintGroupConst.TEXT, None),
+    "bleu3": PrintMetric(TextMetricsConst.BLEU_3, "%", 2, MartPrintGroupConst.TEXT, None),
+    "bleu4": PrintMetric(TextMetricsConst.BLEU_4, "%", 2, MartPrintGroupConst.TEXT, None),
+    "meteo": PrintMetric(TextMetricsConst.METEOR, "%", 2, MartPrintGroupConst.TEXT, None),
+    "rougl": PrintMetric(TextMetricsConst.ROUGE_L, "%", 2, MartPrintGroupConst.TEXT, None),
+    "cider": PrintMetric(TextMetricsConst.CIDER, "%", 2, MartPrintGroupConst.TEXT, None),
+    "re1": PrintMetric(TextMetricsConst.RE1, "%", 2, MartPrintGroupConst.TEXT, None),
+    "re2": PrintMetric(TextMetricsConst.RE2, "%", 2, MartPrintGroupConst.TEXT, None),
+    "re3": PrintMetric(TextMetricsConst.RE3, "%", 2, MartPrintGroupConst.TEXT, None),
+    "re4": PrintMetric(TextMetricsConst.RE4, "%", 2, MartPrintGroupConst.TEXT, None),
+    "c/voc": PrintMetric(TextMetricsConst.SUBMISSION_VOCAB_SIZE, "f", 0, MartPrintGroupConst.TEXT, None),
+    "c/slen": PrintMetric(TextMetricsConst.SUBMISSION_AVG_SEN_LEN, "f", 2, MartPrintGroupConst.TEXT, None),
+    "c/snum": PrintMetric(TextMetricsConst.SUBMISSION_NUM_SEN, "f", 0, MartPrintGroupConst.TEXT, None),
+    "t/voc": PrintMetric(TextMetricsConst.GT_STAT_VOCAB_SIZE, "f", 0, MartPrintGroupConst.TEXT, None),
+    "t/slen": PrintMetric(TextMetricsConst.GT_STAT_AVG_SEN_LEN, "f", 2, MartPrintGroupConst.TEXT, None),
+    "t/snum": PrintMetric(TextMetricsConst.GT_STAT_NUM_SEN, "f", 0, MartPrintGroupConst.TEXT, None),
+}
+
+
+# ---------- Metric handlers ----------
 
 class MetricsWriter:
     """

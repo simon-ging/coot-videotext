@@ -4,9 +4,8 @@ Modular arguments for scripts and utilities to parse some of those arguments.
 import argparse
 import logging
 import os
-from argparse import ArgumentParser
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import repo_config
 from nntrainer.utils import TrainerPathConst
@@ -16,7 +15,7 @@ GITLIKE_SUPPORT = "Supports .gitignore-like patterns, separated by comma."
 GITLIKE_SUPPORT_FILE = "Supports .gitignore-like patterns, one per line."
 
 
-def add_exp_group_arg(parser: ArgumentParser) -> None:
+def add_exp_group_arg(parser: argparse.ArgumentParser) -> None:
     """
     Add experiment directory argument.
 
@@ -29,7 +28,7 @@ def add_exp_group_arg(parser: ArgumentParser) -> None:
                         help="Experiment group. Path to config: config/$TYPE/$GROUP/$NAME.yaml")
 
 
-def add_exp_identifier_args(parser: ArgumentParser) -> None:
+def add_exp_identifier_args(parser: argparse.ArgumentParser) -> None:
     """
     Add full single experiment run identification arguments (dir, name, run name).
 
@@ -42,12 +41,15 @@ def add_exp_identifier_args(parser: ArgumentParser) -> None:
     _add_run_args(parser)
 
 
-def add_trainer_args(parser: ArgumentParser) -> None:
+def add_trainer_args(parser: argparse.ArgumentParser, *, dataset_path: bool = True,
+                     profiling_path: bool = False) -> None:
     """
     Add various arguments for experiment running.
 
     Args:
         parser: Command line argument parser.
+        dataset_path: Whether to add dataset path argument.
+        profiling_path: Whether to add profiling path argument.
     """
     # configuration loading
     parser.add_argument("-o", "--config", type=str, default=None,
@@ -57,20 +59,22 @@ def add_trainer_args(parser: ArgumentParser) -> None:
     # num workers
     parser.add_argument("--workers", type=int, default=None, help="Shortcut for setting dataloader workers.")
     # dataset path
-    add_path_args(parser)
+    add_path_args(parser, dataset_path=dataset_path, profiling_path=profiling_path)
     # checkpoint loading
     parser.add_argument("--load_epoch", type=int, default=None, help="Load epoch number.")
     parser.add_argument("--load_best", action="store_true", help="Load best epoch.")
     # validation
     parser.add_argument("--validate", action="store_true", help="Validation only.")
+    parser.add_argument("--ignore_untrained", action="store_true", help="Validate even if no checkpoint was loaded.")
     # reset (delete everything)
     parser.add_argument("--reset", action="store_true", help="Delete experiment.")
     parser.add_argument("--print_graph", action="store_true", help="Print model and forward pass, then exit.")
-    parser.add_argument("--seed", type=int, default=None, help="Set seed.")
+    parser.add_argument("--seed", type=str, default=None,
+                        help="Set seed. integer or none/null for auto-generated seed.")
     _add_gpu_args(parser)
 
 
-def add_dataset_path_arg(parser: ArgumentParser) -> None:
+def add_dataset_path_arg(parser: argparse.ArgumentParser) -> None:
     """
     Add dataset path argument.
 
@@ -101,7 +105,7 @@ def add_default_args(parser) -> None:
 
 def add_test_arg(parser) -> None:
     """
-    Test argument -t (currently unused)
+    Test argument -t
 
     Args:
         parser: Command line argument parser.
@@ -109,22 +113,26 @@ def add_test_arg(parser) -> None:
     parser.add_argument("-t", "--test", action="store_true", help="test only (no-op)")
 
 
-def add_path_args(parser: ArgumentParser, *, dataset_path: bool = True) -> None:
+def add_path_args(parser: argparse.ArgumentParser, *, dataset_path: bool = True, profiling_path: bool = False) -> None:
     """
     Add all arguments for customizing the paths.
 
     Args:
         parser: Command line argument parser.
         dataset_path: Whether to add dataset path argument.
+        profiling_path: Whether to add profiling path argument.
     """
     parser.add_argument("--config_dir", type=str, default=TrainerPathConst.DIR_CONFIG, help="Folder with config files.")
     parser.add_argument("--log_dir", type=str, default=TrainerPathConst.DIR_EXPERIMENTS,
                         help="Folder with experiment results.")
     if dataset_path:
         add_dataset_path_arg(parser)
+    if profiling_path:
+        parser.add_argument("--profiling_dir", type=str, default=TrainerPathConst.DIR_PROFILING,
+                            help="Profiling output.")
 
 
-def add_dataset_test_arg(parser: ArgumentParser) -> None:
+def add_dataset_test_arg(parser: argparse.ArgumentParser) -> None:
     """
     Add flag for testing the dataset.
 
@@ -134,7 +142,7 @@ def add_dataset_test_arg(parser: ArgumentParser) -> None:
     parser.add_argument("--test_dataset", action="store_true", help="Test dataset and exit.")
 
 
-def add_multi_experiment_args(parser: ArgumentParser) -> None:
+def add_multi_experiment_args(parser: argparse.ArgumentParser) -> None:
     """
     Add arguments for working on multiple experiment groups.
 
@@ -149,7 +157,7 @@ def add_multi_experiment_args(parser: ArgumentParser) -> None:
                         help=f"Search experiment group and name given by the list in the file. {GITLIKE_SUPPORT_FILE}")
 
 
-def add_show_args(parser: ArgumentParser) -> None:
+def add_show_args(parser: argparse.ArgumentParser) -> None:
     """
     Add arguments for printing results.
 
@@ -172,7 +180,7 @@ def add_show_args(parser: ArgumentParser) -> None:
                         help="Define field or comma separated list of fields to print.")
 
 
-def _add_run_args(parser: ArgumentParser) -> None:
+def _add_run_args(parser: argparse.ArgumentParser) -> None:
     """
     Add run number argument.
 
@@ -180,11 +188,12 @@ def _add_run_args(parser: ArgumentParser) -> None:
         parser: Command line argument parser.
     """
     parser.add_argument("-n", "--num_runs", type=int, default=1, help="How many runs to do.")
+    parser.add_argument("-a", "--start_run", type=int, default=1, help="Start at which run number.")
     parser.add_argument("-r", "--run_name", type=str, default="run",
                         help="Run name to save the model. Must not contain underscores.")
 
 
-def _add_gpu_args(parser: ArgumentParser) -> None:
+def _add_gpu_args(parser: argparse.ArgumentParser) -> None:
     """
     Add arguments for gpu settings.
 
@@ -254,7 +263,7 @@ def determine_multi_runs(exp_type: str, exp_group: str = "", exp_list: Optional[
     return output_tuple
 
 
-def update_config_from_args(config: Dict, args: argparse.Namespace, *, verbose: bool = True) -> Tuple[Dict, Path]:
+def update_config_from_args(config: Dict, args: argparse.Namespace, *, verbose: bool = True) -> Dict[str, Any]:
     """
     Modify config and paths given script arguments.
 
@@ -264,9 +273,7 @@ def update_config_from_args(config: Dict, args: argparse.Namespace, *, verbose: 
         verbose: Print message when updating the config.
 
     Returns:
-        Tuple of:
-            Updated config dict.
-            Dataset base path.
+        Updated config dict.
     """
     # parse the --config inline modifier
     if args.config is not None:
@@ -292,6 +299,10 @@ def update_config_from_args(config: Dict, args: argparse.Namespace, *, verbose: 
             for i, field in enumerate(fields):
                 if i == len(fields) - 1:
                     # update field
+                    if field not in current_dict:
+                        assert "same_as" in current_dict, (
+                            f"Field {fields_str} not found in config {list(current_dict.keys())}. "
+                            f"Typo or field missing in config.")
                     current_dict[field] = value
                     if verbose:
                         print(f"    Change config: Set {fields_str} = {value}")
@@ -306,9 +317,12 @@ def update_config_from_args(config: Dict, args: argparse.Namespace, *, verbose: 
             print(f"    Change config: Set dataloader workers to {args.workers} for train and val.")
 
     if args.seed is not None:
-        config["random_seed"] = args.seed
+        if str(args.seed).lower() in ["none", "null"]:
+            config["random_seed"] = None
+        else:
+            config["random_seed"] = int(args.seed)
         if verbose:
-            print(f"    Change config: Set seed to {args.seed}.")
+            print(f"    Change config: Set seed to {args.seed}. Deterministic")
 
     if args.no_cuda:
         config["use_cuda"] = False
@@ -337,13 +351,16 @@ def update_path_from_args(args: argparse.Namespace) -> Path:
     return Path(path_data)
 
 
-def setup_experiment_identifier_from_args(args: argparse.Namespace, exp_type: str):
+def setup_experiment_identifier_from_args(args: argparse.Namespace, exp_type: str) -> Tuple[str, str, str]:
     """
+    Determine the experiment identifier (Group, name, config file) either from group and name or from config file path.
+
     Args:
-        args:
-        exp_type:
+        args: Arguments.
+        exp_type: Experiment type.
 
     Returns:
+        Tuple of group, name, config file.
     """
     if args.config_file is None:
         # no path to config file given, determine from experiment identifier

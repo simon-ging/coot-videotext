@@ -5,6 +5,7 @@ Script to run the MLP MNIST example.
 Examples:
     python -m nntrainer.examples.run_mlp_mnist -e mnist
     python -m nntrainer.examples.run_mlp_mnist -c config/mlp/default/mnist.yaml
+    python -m nntrainer.examples.run_mlp_mnist -e mnist -n 3
 
 Notes:
     Training workflow will look like this:
@@ -36,12 +37,12 @@ def main():
     # setup arguments
     parser = utils.ArgParser(description=__doc__)
     arguments.add_default_args(parser)
-    arguments.add_trainer_args(parser)
     arguments.add_exp_identifier_args(parser)
+    arguments.add_trainer_args(parser)
     arguments.add_dataset_test_arg(parser)
     args = parser.parse_args()
 
-    # load experiment config
+    # load repository config yaml file to dict
     exp_group, exp_name, config_file = arguments.setup_experiment_identifier_from_args(args, EXP_TYPE)
     config = load_yaml_config_file(config_file)
 
@@ -49,7 +50,7 @@ def main():
     config = arguments.update_config_from_args(config, args)
     dataset_path = arguments.update_path_from_args(args)
 
-    # create configuration object
+    # read experiment config dict
     cfg = MLPMNISTExperimentConfig(config)
     if args.print_config:
         print(cfg)
@@ -73,29 +74,38 @@ def main():
     train_loader = create_loader(train_set, cfg.dataset_train, batch_size=cfg.train.batch_size)
     val_loader = create_loader(val_set, cfg.dataset_val, batch_size=cfg.val.batch_size)
 
-    # create model
-    model_mgr = MLPModelManager(cfg)
-
     if args.test_dataset:
         # run dataset test and exit
         run_mlpmnist_dataset_test(train_set, train_loader)
         return
+    print("---------- Setup done!")
 
-    # always load best epoch during validation
-    load_best = args.load_best or args.validate
+    for run_number in range(1, args.num_runs + 1):
+        run_name = f"{args.run_name}{run_number}"
 
-    # create trainer
-    trainer = MLPMNISTTrainer(
-        cfg, model_mgr, exp_group, exp_name, args.run_name, len(train_loader), log_dir=args.log_dir,
-        log_level=args.log_level, logger=None, print_graph=args.print_graph, reset=args.reset,
-        load_best=load_best, load_epoch=args.load_epoch, inference_only=args.validate)
+        # create model
+        model_mgr = MLPModelManager(cfg)
 
-    if args.validate:
-        # run validation
-        trainer.validate_epoch(val_loader)
-    else:
-        # run training
-        trainer.train_model(train_loader, val_loader)
+        # always load best epoch during validation
+        load_best = args.load_best or args.validate
+
+        # create trainer
+        trainer = MLPMNISTTrainer(
+            cfg, model_mgr, exp_group, exp_name, run_name, len(train_loader), log_dir=args.log_dir,
+            log_level=args.log_level, logger=None, print_graph=args.print_graph, reset=args.reset,
+            load_best=load_best, load_epoch=args.load_epoch, inference_only=args.validate)
+
+        if args.validate:
+            # run validation
+            trainer.validate_epoch(val_loader)
+        else:
+            # run training
+            trainer.train_model(train_loader, val_loader)
+
+        # done with this round
+        trainer.close()
+        del model_mgr
+        del trainer
 
 
 def run_mlpmnist_dataset_test(train_set: MNIST, train_loader: data.DataLoader) -> None:

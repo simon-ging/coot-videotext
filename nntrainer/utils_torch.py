@@ -1,7 +1,5 @@
 """
 Utilities for randomness.
-
-    Complete docstrings.
 """
 import ctypes
 import multiprocessing
@@ -58,26 +56,23 @@ def create_shared_array(arr: np.ndarray, dtype: str = "float") -> np.array:
 
 # ---------- Random ----------
 
-def set_seed(seed: int, set_deterministic: bool = True):
+def set_seed(seed: int, cudnn_deterministic: bool = False, cudnn_benchmark: bool = True):
     """
     Set all relevant seeds for torch, numpy and python
 
     Args:
         seed: int seed
-        set_deterministic: Guarantee deterministic training, possibly at the cost of performance.
+        cudnn_deterministic: set True for deterministic training..
+        cudnn_benchmark: set False for deterministic training.
     """
     th.manual_seed(seed)
     cuda.manual_seed(seed)
     cuda.manual_seed_all(seed)
     np.random.seed(seed)
     random.seed(seed)
-    if set_deterministic:
-        cudnn.benchmark = False
+    if cudnn_deterministic:
         cudnn.deterministic = True
-    elif cudnn.benchmark or not cudnn.deterministic:
-        print(f"WARNING: Despite fixed seed {seed}, training may not be deterministic with {cudnn.benchmark=} "
-              f"(must be False for deterministic training) and {cudnn.deterministic=} (must be True for deterministic "
-              f"training)")
+    cudnn.benchmark = cudnn_benchmark
 
 
 def get_truncnorm_tensor(shape: Tuple[int], *, mean: float = 0, std: float = 1, limit: float = 2) -> th.Tensor:
@@ -230,3 +225,16 @@ def _get_gputil_info():
             gpu_strings[gpuIdx] += '| ' + attr_str + ' '
 
     return "\n".join(gpu_strings), gpu_info
+
+
+# ---------- Modeling ----------
+
+def count_parameters(model, verbose=True):
+    """
+    Count number of parameters in PyTorch model,
+    """
+    n_all = sum(p.numel() for p in model.parameters())
+    n_frozen = sum(p.numel() for p in model.parameters() if not p.requires_grad)
+    if verbose:
+        print(f"Parameters total: {n_all}, frozen: {n_frozen}")
+    return n_all, n_frozen

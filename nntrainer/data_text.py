@@ -17,16 +17,15 @@ class TextPreprocessing(ConstantHolder):
     """
     BERT_NEW = "bert_new"
     BERT_PAPER = "bert_paper"
-    BART = "bart"
-    # PRIVATE # GLOVE = "glove"
-    SIMPLE = "simple"
     GPT2 = "gpt2"
+    SIMPLE = "simple"
+    NOTHING = "nothing"
+    WITH_DOTS = "with_dots"
 
 
 def get_text_preprocessor(func: str) -> Callable[[str], str]:
     """
     Given a string descriptor of the function, return the requested preprocessing function.
-
 
     Args:
         func: Function name.
@@ -34,17 +33,23 @@ def get_text_preprocessor(func: str) -> Callable[[str], str]:
     Returns:
         Text preprocessing function.
     """
-    if func == TextPreprocessing.BERT_NEW:
-        return partial(preprocess_paragraph, begin_paragraph_token="[CLS]", end_sentence_token="[SEP]",
-                       remove_ending_dot=True, replace_inside_dots=True)
     if func == TextPreprocessing.BERT_PAPER:
         # original implementation without dots and capitalization
         return partial(preprocess_paragraph, begin_paragraph_token="[CLS]", end_sentence_token="[SEP]",
                        remove_ending_dot=True, replace_inside_dots=True, capitalize=False)
+
+    if func == TextPreprocessing.BERT_NEW:
+        # new BERT implementation, no dots, with casing
+        return partial(preprocess_paragraph, begin_paragraph_token="[CLS]", end_sentence_token="[SEP]",
+                       remove_ending_dot=True, replace_inside_dots=True)
     if func == TextPreprocessing.GPT2:
         return partial(preprocess_paragraph, add_space_before_token=False)
     if func == TextPreprocessing.SIMPLE:
         return preprocess_paragraph
+    if func == TextPreprocessing.NOTHING:
+        return partial(preprocess_paragraph, capitalize=False)
+    if func == TextPreprocessing.WITH_DOTS:
+        return partial(preprocess_paragraph, remove_ending_dot=True, replace_inside_dots=True, capitalize=False)
     raise NotImplementedError(f"Text Processing '{func}' unknown")
 
 
@@ -69,15 +74,10 @@ def preprocess_paragraph(
     for num_sentence, sentence in enumerate(paragraph):
         # strip and remove whitespaces
         sentence = RE_WHITESPACES.sub(" ", sentence).strip()
-
-        # make sure there is content
-        if len(sentence) < 2:
-            raise ValueError(f"Sentence length < 2 is not permitted. Paragraphs given: {paragraph}, "
-                             f"sentence {num_sentence}: {sentence}")
-
+        assert len(sentence) > 0
         # remove last dot if requested, but keep multiple dots
         if remove_ending_dot:
-            if sentence[-1] == "." and not sentence[-2] == ".":
+            if sentence[-1] == "." and len(sentence) > 1 and sentence[-2] != ".":
                 sentence = sentence[:-1]
         # add last dot if requested
         else:

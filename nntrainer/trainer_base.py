@@ -4,8 +4,9 @@ Generic Deep Learning trainer that automates tasks required for all kinds of tra
 import datetime
 import logging
 import os
+from pathlib import Path
 from timeit import default_timer as timer
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch as th
 from torch import nn
@@ -47,6 +48,7 @@ class BaseTrainer:
         load_epoch: Whether to load a specific epoch.
         load_model: Load model given by file path.
         is_test: Removes some parts that are not needed during inference for speedup.
+        exp_files_handler: Optionally provide an instance to overwrite the standard ExperimentFilesHandler
     """
 
     def __init__(
@@ -54,7 +56,7 @@ class BaseTrainer:
             exp_name: str, run_name: str, train_loader_length: int, model_type: str, *,
             log_dir: str = "experiments", log_level: Optional[int] = None, logger: Optional[logging.Logger] = None,
             print_graph: bool = False, reset: bool = False, load_best: bool = False, load_epoch: Optional[int] = None,
-            load_model: Optional[str] = None, is_test: bool = False):
+            load_model: Optional[str] = None, is_test: bool = False, exp_files_handler: ExperimentFilesHandler = None):
         assert "_" not in run_name, f"Run name {run_name} must not contain underscores."
         self.is_test: bool = is_test
 
@@ -67,9 +69,11 @@ class BaseTrainer:
         # save config
         self.cfg: trainer_configs.DefaultExperimentConfig = cfg
 
-        # create experiment helper for directories
-        self.exp = ExperimentFilesHandler(model_type, exp_group, exp_name, run_name, log_dir=log_dir)
-        self.exp.setup_dirs(reset=reset)
+        # create experiment helper for directories, if it wasn't already overwritten by the base trainer
+        self.exp = exp_files_handler
+        if self.exp is None:
+            self.exp = ExperimentFilesHandler(model_type, exp_group, exp_name, run_name, log_dir=log_dir)
+            self.exp.setup_dirs(reset=reset)
 
         # setup logging
         assert logger is None or log_level is None, "Cannot specify both loglevel and logger together."
@@ -111,7 +115,7 @@ class BaseTrainer:
                 if self.cfg.use_cuda:
                     if not th.cuda.is_available():
                         raise RuntimeError(
-                            "CUDA requested but not available! Use --no_cuda to run on CPU.")  # todo no cuda
+                            "CUDA requested but not available! Use --no_cuda to run on CPU.")
                     if self.cfg.use_multi_gpu:
                         model = nn.DataParallel(model)
                     model = model.cuda()
@@ -447,7 +451,8 @@ class BaseTrainer:
         self.state.time_total += timer() - self.timer_train_epoch
 
         # step LR scheduler after end of epoch
-        self.lr_scheduler.step_epoch(is_val, has_improved)
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step_epoch(is_val, has_improved)
 
         # log metrics
         self.metrics.update_meter(Metrics.TIME_TOTAL, self.state.time_total)
@@ -498,7 +503,8 @@ class BaseTrainer:
         self.timedelta_step_backward = timer() - self.timer_step_backward
 
     def hook_post_step(
-            self, epoch_step: int, loss: th.Tensor, lr: float, additional_log: Optional[str] = None) -> bool:
+            self, epoch_step: int, loss: th.Tensor, lr: float, additional_log: Optional[str] = None,
+            disable_grad_clip: bool = False) -> bool:
         """
         Hook called after one optimization step.
 
@@ -510,6 +516,7 @@ class BaseTrainer:
             loss: Training loss.
             lr: Training learning rate.
             additional_log: Additional string to print in the train step log.
+            disable_grad_clip: Disable gradient clipping if it's done already somewhere else
 
         Returns:
             Whether log output should be printed in this step or not.
@@ -520,7 +527,7 @@ class BaseTrainer:
 
         # clip gradients
         total_norm = 0
-        if self.cfg.train.clip_gradient > -1:
+        if self.cfg.train.clip_gradient > -1 and not disable_grad_clip:
             # get all parameters to clip
             _params, _param_names, params_flat = self.model_mgr.get_all_params()
             # clip using pytorch
@@ -553,7 +560,7 @@ class BaseTrainer:
             gpu_mem_used: float = sum(used_memory_per)
             gpu_mem_total: float = sum(total_memory_per)
             # gpu_mem_percent: float = gpu_mem_used / gpu_mem_total
-            load_avg: float = sum(load_per) / len(load_per)
+            load_avg: float = sum(load_per) / max(1, len(load_per))
 
             self.metrics.update_meter(Metrics.PROFILE_GPU_MEM_USED, gpu_mem_used)
             self.metrics.update_meter(Metrics.PROFILE_GPU_MEM_TOTAL, gpu_mem_total)
@@ -596,7 +603,8 @@ class BaseTrainer:
         self.metrics.feed_metrics(True, self.state.total_step, self.state.current_epoch)
 
         # End of batch, step lr scheduler depending on flag
-        self.lr_scheduler.step()
+        if self.lr_scheduler is not None:
+            self.lr_scheduler.step()
 
     # ---------- Non-public methods ----------
 
@@ -712,8 +720,7 @@ class BaseTrainer:
             # delete safely (don't crash if they don't exist for some reason)
             for file in [self.exp.get_models_file(ep_num), self.exp.get_optimizer_file(ep_num),
                          self.exp.get_trainerstate_file(ep_num), self.exp.get_metrics_epoch_file(ep_num),
-                         self.exp.get_metrics_step_file(ep_num),  # self.exp.get_data_file(ep_num)]
-                         ]:
+                         self.exp.get_metrics_step_file(ep_num)]:
                 if file.is_file():
                     os.remove(file)
                 else:
@@ -721,3 +728,14 @@ class BaseTrainer:
             cleaned.append(ep_num)
         if len(cleaned) > 0:
             self.logger.debug(f"Deleted epochs: {cleaned}")
+
+    def get_files_for_cleanup(self, epoch: int) -> List[Path]:
+        """
+        Implement this in the child trainer.
+
+        Args:
+            epoch: Epoch to cleanup
+
+        Returns:
+            List of files to cleanup.
+        """

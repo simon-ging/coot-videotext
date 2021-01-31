@@ -100,17 +100,12 @@ class MultiGenPool(nn.Module):
         self.pools = nn.ModuleList(pools)
 
     def forward(self, features, mask, lengths):
-        feature_stack, atn_stack = [], []
+        feature_stack = []
         for pool in self.pools:
-            features, atn = pool(features, mask, lengths)
+            features = pool(features, mask, lengths)
             feature_stack.append(features)
-            if atn is not None:
-                atn_stack.append(atn)
         pooled = torch.cat(feature_stack, dim=-1)
-        if len(atn_stack) > 0:
-            atn_stack = torch.cat(atn_stack, dim=-1)
-            return pooled, atn_stack
-        return pooled, None
+        return pooled
 
 
 class GenPool(nn.Module):
@@ -210,7 +205,7 @@ class GenPool(nn.Module):
         pooled = (features * smweights).sum(dim=1)
 
         # return
-        return pooled, smweights
+        return pooled
 
 
 class TemporalMaxPool(nn.Module):
@@ -231,7 +226,7 @@ class TemporalMaxPool(nn.Module):
         result2, _ = torch.max(feat_fill, dim=1)
         # (batch, feat_dim)
 
-        return result2, None
+        return result2
 
 
 class TemporalAvgPool(nn.Module):
@@ -243,7 +238,7 @@ class TemporalAvgPool(nn.Module):
         result2 = torch.sum(features, dim=1) / len_div
         # output shape (batch, feat_dim * num_dirs)
 
-        return result2, None
+        return result2
 
 
 class TemporalAvgPoolFixed(nn.Module):
@@ -257,7 +252,7 @@ class TemporalAvgPoolFixed(nn.Module):
         len_div = lengths.unsqueeze(-1).float()
         result2 = torch.sum(f2, dim=1) / len_div
         # output shape (batch, feat_dim * num_dirs)
-        return result2, None
+        return result2
 
 
 class TemporalLastPool(nn.Module):
@@ -271,7 +266,7 @@ class TemporalLastPool(nn.Module):
         idx_last = (lengths - 1).unsqueeze(-1).unsqueeze(-1).repeat(
             1, 1, features.shape[-1])
         result2 = torch.gather(features, 1, idx_last)
-        return result2, None
+        return result2
 
 
 class TemporalFirstPool(nn.Module):
@@ -290,4 +285,4 @@ class TemporalFirstPool(nn.Module):
         if self.half_pool:
             _, feat_dim = result2.shape
             result2 = result2.reshape(-1, 2, feat_dim // 2).mean(dim=1)
-        return result2, None
+        return result2

@@ -12,7 +12,7 @@ You can easily **create output tables** over all experiments or subsets:
 python show_retrieval.py -g paper2020 --log_dir provided_experiments --mean --compact
 
 # Output:
-# experiment (num) |       v2p-r1|       p2v-r1|       c2s-r1|       s2c-r1|  time (h)
+# experiment (num) |       v2p-r1|       p2v-r1|       c2s-r1|       s2c-r1|  time
 # -----------------|-------------|-------------|-------------|-------------|----------
 # anet_coot_run (3)|61.44% ±0.94%|61.56% ±0.82%| 0.00% ±0.00%| 0.00% ±0.00%|0.90 ±0.23
 # yc2_100m_run (3) |75.35% ±2.67%|73.96% ±2.09%|15.47% ±0.04%|16.64% ±0.19%|0.20 ±0.02

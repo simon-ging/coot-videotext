@@ -2,12 +2,10 @@
 Modular arguments specific to COOT training.
 """
 import argparse
-from argparse import ArgumentParser
-from pathlib import Path
-from typing import Dict, Tuple
+from typing import Any, Dict
 
 
-def add_dataloader_args(parser: ArgumentParser) -> None:
+def add_dataloader_args(parser: argparse.ArgumentParser) -> None:
     """
     Add flags for the dataloader (preloading).
 
@@ -23,7 +21,7 @@ def add_dataloader_args(parser: ArgumentParser) -> None:
 
 
 def update_coot_config_from_args(
-        config: Dict, args: argparse.Namespace, *, verbose: bool = True) -> Tuple[Dict, Path]:
+        config: Dict, args: argparse.Namespace, *, verbose: bool = True) -> Dict[str, Any]:
     """
     Modify config and paths given script arguments.
 
@@ -35,9 +33,7 @@ def update_coot_config_from_args(
         verbose: Print message when updating the config.
 
     Returns:
-        Tuple of:
-            Updated config dict.
-            Dataset base path.
+        Updated config dict.
     """
     if args.preload_vid or args.preload:
         if verbose:

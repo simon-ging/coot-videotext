@@ -79,8 +79,7 @@ class RetrievalModelManager(models.BaseModelManager):
             # create the network
             if current_cfg.name == models.TransformerTypesConst.TRANSFORMER_LEGACY:
                 # old transformer
-                model = models.TransformerLegacy(current_cfg, input_dims[key], return_atn=False)
-                self.model_dict[key] = model
+                self.model_dict[key] = models.TransformerLegacy(current_cfg, input_dims[key])
             else:
                 raise NotImplementedError(f"Coot model type {current_cfg.name} undefined")
 
@@ -102,7 +101,7 @@ class RetrievalModelManager(models.BaseModelManager):
             net_vid_global_config = self.cfg.model_cfgs[RetrievalNetworksConst.NET_VIDEO_GLOBAL]
 
             # compute video context
-            vid_context, _, _, _, _ = net_vid_local(batch.vid_feat, batch.vid_feat_mask, batch.vid_feat_len, None)
+            vid_context, _ = net_vid_local(batch.vid_feat, batch.vid_feat_mask, batch.vid_feat_len, None)
             if net_vid_global.use_context:
                 # need context for cross-attention later
                 if net_vid_global_config.name == models.TransformerTypesConst.RNN_LEGACY:
@@ -117,7 +116,7 @@ class RetrievalModelManager(models.BaseModelManager):
                 vid_context_hidden = None
 
             # compute clip embedding
-            clip_emb, _, _, _, _ = net_vid_local(batch.clip_feat, batch.clip_feat_mask, batch.clip_feat_len, None)
+            clip_emb, _ = net_vid_local(batch.clip_feat, batch.clip_feat_mask, batch.clip_feat_len, None)
             batch_size = len(batch.clip_num)
             max_clip_len = th.max(batch.clip_num)
             clip_feat_dim = net_vid_local_config.output_dim
@@ -136,7 +135,7 @@ class RetrievalModelManager(models.BaseModelManager):
                 pointer += clip_len
 
             # compute video embedding
-            vid_emb, _, _, _, _ = net_vid_global(clip_emb_reshape, clip_emb_mask, batch.clip_num, vid_context_hidden)
+            vid_emb, _ = net_vid_global(clip_emb_reshape, clip_emb_mask, batch.clip_num, vid_context_hidden)
             return RetrievalVisualEmbTuple(
                 vid_emb, clip_emb, vid_context, clip_emb_reshape, clip_emb_mask, clip_emb_lens)
 
@@ -158,7 +157,7 @@ class RetrievalModelManager(models.BaseModelManager):
             net_text_global_config = self.cfg.model_cfgs[RetrievalNetworksConst.NET_TEXT_GLOBAL]
 
             # compute paragraph context
-            par_context, _, _, _, _ = net_text_local(batch.par_feat, batch.par_feat_mask, batch.par_feat_len, None)
+            par_context, _ = net_text_local(batch.par_feat, batch.par_feat_mask, batch.par_feat_len, None)
             if net_text_global_config.use_context:
                 # need context for cross-attention later
                 if net_text_global_config.name == models.TransformerTypesConst.RNN_LEGACY:
@@ -173,7 +172,7 @@ class RetrievalModelManager(models.BaseModelManager):
                 par_gru_hidden = None
 
             # compute sentence embedding
-            sent_emb, _, _, _, _ = net_text_local(batch.sent_feat, batch.sent_feat_mask, batch.sent_feat_len, None)
+            sent_emb, _ = net_text_local(batch.sent_feat, batch.sent_feat_mask, batch.sent_feat_len, None)
             batch_size = len(batch.sent_num)
             sent_feat_dim = net_text_local_config.output_dim
             max_sent_len = th.max(batch.sent_num)
@@ -193,5 +192,5 @@ class RetrievalModelManager(models.BaseModelManager):
                 pointer += sent_len
 
             # compute paragraph embedding
-            par_emb, _, _, _, _ = net_text_global(sent_emb_reshape, sent_emb_mask, batch.sent_num, par_gru_hidden)
+            par_emb, _ = net_text_global(sent_emb_reshape, sent_emb_mask, batch.sent_num, par_gru_hidden)
             return RetrievalTextEmbTuple(par_emb, sent_emb, par_context, sent_emb_reshape, sent_emb_mask, sent_emb_lens)

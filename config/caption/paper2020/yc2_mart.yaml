@@ -1,0 +1,105 @@
+description: ""
+config_type: "mart"
+# ---------- Training ----------
+train:
+    batch_size: 16
+    num_epochs: 50
+    loss_func: "crossentropy"
+    clip_gradient: 1
+label_smoothing: 0.1
+# ---------- Validation ----------
+val:
+    batch_size: 50
+    val_freq: 1
+    val_start: 0
+    det_best_field: "cider"
+    det_best_compare_mode: "max"
+    det_best_threshold_mode: "rel"
+    det_best_threshold_value: 1e-4
+    det_best_terminate_after: 10
+save_mode: "best"
+# beam search
+use_beam: false
+beam_size: 2
+n_best: 1
+# generated sentence bounds
+min_sen_len: 5
+max_sen_len: 30
+block_ngram_repeat: 0
+length_penalty_name: "none"
+length_penalty_alpha: 0.
+# ---------- Dataset / Dataloader ----------
+dataset_train:
+    name: "youcook2"
+    data_type: "auto"
+    subset: "default"
+    split: "train"
+    max_datapoints: -1
+    shuffle: true
+    pin_memory: true
+    num_workers: 4
+    drop_last: false
+    preload: false
+dataset_val:
+    same_as: "dataset_train"
+    shuffle: false
+    split: "val"
+max_n_sen: 12 # 6 activitynet, 12 youcook2
+max_n_sen_add_val: 10
+max_t_len: 22
+max_v_len: 100 # 3 for mart with coot, 100 for rgb+flow video features
+type_vocab_size: 2
+word_vec_size: 300
+# COOT embeddings. Set coot_model_name to null to train on video features
+coot_model_name: null
+coot_dim_clip: 384
+coot_dim_vid: 768
+coot_mode: "clip"
+# Video feature size: 3072 for rgb+flow features, 1152 for COOT vidclip, 384 for COOT clip
+video_feature_size: 3072
+# ---------- Technical ----------
+random_seed: null
+use_cuda: true
+debug: false
+cudnn_enabled: true
+cudnn_benchmark: true
+cudnn_deterministic: false
+use_multi_gpu: false
+cuda_non_blocking: true
+fp16_train: false # this will create NaN in the backward pass!
+fp16_val: false
+# ---------- Model ----------
+attention_probs_dropout_prob: 0.1
+hidden_dropout_prob: 0.1
+hidden_size: 768
+intermediate_size: 768
+layer_norm_eps: 1e-12
+memory_dropout_prob: 0.1
+num_attention_heads: 12
+num_hidden_layers: 2
+n_memory_cells: 1
+share_wd_cls_weight: false
+recurrent: true # recurrent model
+untied: false # untied model
+mtrans: false # vanilla transformer
+xl: false # transformer xl
+xl_grad: false # transformer xl with gradient
+use_glove: true
+freeze_glove: false
+# ---------- Optimization ----------
+ema_decay: 0.9999
+initializer_range: 0.02
+lr: 0.0001
+lr_warmup_proportion: 0.1
+# ---------- Logging ----------
+logging:
+    step_train: 10
+    step_val: 10
+    step_gpu: -1
+    step_gpu_once: 10
+# ---------- Saving ----------
+saving:
+    keep_freq: -1
+    save_last: true
+    save_best: true
+    save_opt_state: true

@@ -80,6 +80,11 @@ def collect_results_data(exp_type: str, exp_groups_names: Dict[str, List[str]], 
             epoch_file = handler.get_metrics_epoch_file(search_epoch)
             epoch_data = json.load(epoch_file.open("rt", encoding="utf8"))
 
+            # save experiment group and name
+            collector[exp_ident][DefaultMetricsConst.EXP_GROUP] = exp_group
+            collector[exp_ident][DefaultMetricsConst.EXP_NAME] = exp_name
+            collector[exp_ident][DefaultMetricsConst.RUN_NAME] = run_name
+
             # loop result metrics
             for key, metrics in epoch_data.items():
                 # loop epoch, value tuples in the result
@@ -121,6 +126,28 @@ def collect_results_data(exp_type: str, exp_groups_names: Dict[str, List[str]], 
     return collector
 
 
+def update_performance_profile(collector: RESULTS_TYPE, profiling_dir=TrainerPathConst.DIR_PROFILING):
+    """
+    Args:
+        collector: Dictionary of experiment runs, with a dictionary of metric name and value for each run.
+        profiling_dir: Directory with stored performance results.
+
+    Returns:
+        Same collector dictionary with updated performance values.
+    """
+    for _exp_ident, metrics in collector.items():
+        exp_group = metrics[DefaultMetricsConst.EXP_GROUP]
+        exp_name = metrics[DefaultMetricsConst.EXP_NAME]
+        performance_file = Path(profiling_dir) / f"{exp_group}_{exp_name}.json"
+        if not performance_file.is_file():
+            continue
+        performance_data = json.load(performance_file.open("rt", encoding="utf8"))
+        metrics[DefaultMetricsConst.PERF_PARAMS] = float(performance_data["params_total"])
+        metrics[DefaultMetricsConst.PERF_SPEED] = float(performance_data["forward_time_per"])
+        metrics[DefaultMetricsConst.PERF_GFLOPS] = float(performance_data["total_gflops"])
+    return collector
+
+
 def average_results_data(collector: RESULTS_TYPE, group_by_names: bool = False
                          ) -> Tuple[RESULTS_TYPE, RESULTS_TYPE, Dict[str, int]]:
     """
@@ -157,10 +184,11 @@ def average_results_data(collector: RESULTS_TYPE, group_by_names: bool = False
     for exp_name, metrics in collector_multi.items():
         for metric_name, metric_value_list in metrics.items():
             values = np.array(metric_value_list)
-            mean = np.mean(metric_value_list)
-            if len(values) == 1:
+            if len(values) == 1 or isinstance(metric_value_list[0], str):
+                mean = values[0]
                 stddev = 0
             else:
+                mean = np.mean(metric_value_list)
                 stddev = np.sqrt(1 / (len(values) - 1) * np.sum((values - mean) ** 2))
             collector_mean[exp_name][metric_name] = mean
             collector_stddev[exp_name][metric_name] = stddev
@@ -199,6 +227,8 @@ def output_results(
     # ---------- Determine metrics to show ----------
 
     # create dictionary of all metrics that can possibly be printed
+    if custom_metrics is None:
+        custom_metrics = {}
     all_metrics: Dict[str, PrintMetric] = {**DEFAULT_METRICS, **custom_metrics}
 
     # determine which additional groups of metrics to show
@@ -244,9 +274,9 @@ def output_results(
         # sort models by given metric, fail-safe if the field doesn't exist
         sort_key = all_metrics[sort].long_name
         sort_values = []
-        for metrics in collector_mean.values():
-            if sort_key in metrics:
-                sort_values.append(metrics[sort_key])
+        for metrics_names in collector_mean.values():
+            if sort_key in metrics_names:
+                sort_values.append(metrics_names[sort_key])
             else:
                 sort_values.append(0)
         sort_idx = np.argsort(sort_values)
@@ -260,8 +290,7 @@ def output_results(
     logger.info(f"Metrics (-m) to print: {set(groups_to_print)}, available groups: 'all' or {groups_available}")
 
     # define which keys to print
-    print_keys_all = [field for field in fields_to_print]
-    print_keys_all += [key for key, metr in all_metrics.items() if metr.print_group in groups_to_print]
+    print_keys_all = fields_to_print + [key for key, metr in all_metrics.items() if metr.print_group in groups_to_print]
 
     # skip keys if there is no data
     print_keys, skipped = [], []
@@ -311,9 +340,12 @@ def output_results(
                     value_std = collector_stddev[model][metr.long_name]
                 if format_lambda is not None:
                     value_std = format_lambda(value_std)
-                std_str = formatter.format(value_std)
-                out_str = f"{out_str} ±{std_str}"
-                correct_spaces_line.append(len(std_str))
+                if value_std != 0:
+                    std_str = formatter.format(value_std)
+                    out_str = f"{out_str} ±{std_str}"
+                    correct_spaces_line.append(len(std_str))
+                else:
+                    correct_spaces_line.append(0)
             body_line.append(out_str)
         body.append(body_line)
         correct_spaces.append(correct_spaces_line)
@@ -340,9 +372,19 @@ def output_results(
 # ---------- Console table printing ----------
 
 COLOR_DEFAULT = "[39m"
-COLOR_WHITE = "[97m"
-
+COLOR_WHITE = "[96m"  # "[97m"
+# 0 default gray
+# 1-9 formatting
+# 30-39 dark
+# 40-47 bg dark
+# 90-97 light
+# 100-107 bg light
 COLOR_CODE = "\033"
+
+
+# # view all
+# CSI = "\x1B["
+# for n in range(108): print(n, CSI+f"31;{n}m" + u"\u2588" + CSI + "0m")
 
 
 def get_color(num: int) -> str:

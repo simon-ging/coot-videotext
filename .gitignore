@@ -1,7 +1,9 @@
 # ---------- repo-specific
-/data
+/data/
 /experiments/
-
+/provided_embeddings*/
+/provided_models*/
+/provided_profiling*/
 # ---------- general
 
 # big files
@@ -17,7 +19,7 @@
 .idea/
 */.idea/
 
-# various temp files
+# temp files
 .directory
 nohup.out
 ~$*.*
@@ -34,3 +36,15 @@ __pycache__/
 .mypy_cache/
 .dmypy.json
 dmypy.json
+
+# testing
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/

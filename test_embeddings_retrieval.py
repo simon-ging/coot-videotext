@@ -19,7 +19,18 @@ def main():
 
     # load embeddings
     with h5py.File(path_to_embeddings, "r") as h5:
-        data_collector = dict((key, np.array(h5[key])) for key in ["vid_emb", "par_emb", "clip_emb", "sent_emb"])
+        if "vid_emb" not in h5:
+            # backwards compatibility
+            (f_vid_emb, f_vid_emb_before_norm, f_clip_emb, f_clip_emb_before_norm, f_vid_context,
+             f_vid_context_before_norm, f_par_emb, f_par_emb_before_norm, f_sent_emb, f_sent_emb_before_norm,
+             f_par_context, f_par_context_before_norm) = (
+                "vid_norm", "vid", "clip_norm", "clip", "vid_ctx_norm", "vid_ctx",
+                "par_norm", "par", "sent_norm", "sent", "par_ctx_norm", "par_ctx")
+            data_collector = dict((key_target, np.array(h5[key_source])) for key_target, key_source in zip(
+                ["vid_emb", "par_emb", "clip_emb", "sent_emb"], [f_vid_emb, f_par_emb, f_clip_emb, f_sent_emb]))
+        else:
+            # new version
+            data_collector = dict((key, np.array(h5[key])) for key in ["vid_emb", "par_emb", "clip_emb", "sent_emb"])
 
     # compute retrieval
     print(retrieval.VALHEADER)

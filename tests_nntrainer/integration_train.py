@@ -8,6 +8,7 @@ Integration test: Train on MNIST, save and reload from checkpoints.
 
 from copy import deepcopy
 
+from torch import cuda
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
 
@@ -29,7 +30,12 @@ def test_save_load():
     cfg = MLPMNISTExperimentConfig(config)
     cfg.dataset_train.num_workers = 0
     cfg.dataset_val.num_workers = 0
-    set_seed(0, set_deterministic=True)
+    set_seed(0, cudnn_deterministic=True, cudnn_benchmark=False)
+
+    if not cuda.is_available():
+        # make this test safe in cpu environment
+        cfg.use_multi_gpu = False
+        cfg.use_cuda = False
 
     # create dataset and dataloader
     train_set = MNIST(str(dataset_path), train=True, download=True, transform=ToTensor())
@@ -64,6 +70,10 @@ def test_save_load():
     cfg.train.num_epochs = 4
     cfg.use_multi_gpu = False
     cfg.use_cuda = True
+    if not cuda.is_available():
+        # make this test safe in cpu environment
+        cfg.use_multi_gpu = False
+        cfg.use_cuda = False
 
     model_mgr = MLPModelManager(cfg)
     trainer = MLPMNISTTrainer(cfg, model_mgr, exp_group, exp_name, run_name, len(train_loader))
@@ -77,6 +87,9 @@ def test_save_load():
     cfg.train.num_epochs = 4
     cfg.use_multi_gpu = False
     cfg.use_cuda = True
+    if not cuda.is_available():
+        # make this test safe in cpu environment
+        cfg.use_cuda = False
 
     model_mgr = MLPModelManager(cfg)
     trainer = MLPMNISTTrainer(cfg, model_mgr, exp_group, exp_name, run_name, len(train_loader), inference_only=True)

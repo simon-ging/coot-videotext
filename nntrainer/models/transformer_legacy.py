@@ -1,8 +1,10 @@
 """
 Transformer implementation.
+
+Similar inference speed to pytorch built-in transformers.
 """
 
-from typing import Any, Dict, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 import numpy as np
 import torch as th
@@ -47,7 +49,10 @@ class TransformerConfig(ConfigClass):
             self.input_fc_config = MLPConfig(config.pop("input_fc_config"))
 
         # Self-attention
-        self.selfatn = TransformerEncoderConfig(config.pop("selfatn_config"))
+        self.selfatn = None
+        field_selfatn = "selfatn_config"
+        if self.selfatn is None:
+            self.selfatn = TransformerEncoderConfig(config.pop("selfatn_config"))
 
         # output FC for resampling features before pooling
         self.use_output_fc: bool = config.pop("use_output_fc")
@@ -56,16 +61,19 @@ class TransformerConfig(ConfigClass):
 
         # cross-attention
         self.use_context: bool = config.pop("use_context")
-        assert isinstance(self.use_context, bool)
         if self.use_context:
             # fields required for cross-attention
-            self.crossatn = TransformerEncoderConfig(config.pop("crossatn_config"))
+            field_crossatn = "crossatn_config"
+            config_class = TransformerEncoderConfig
+            self.crossatn = config_class(config.pop(field_crossatn))
         # pooler
         self.pooler_config = PoolerConfig(config.pop("pooler_config"))
 
         # weight initialiazion
         self.weight_init_type: str = config.pop("weight_init_type")
         self.weight_init_std: float = config.pop("weight_init_std")
+
+        self.linear_out: bool = config.pop("linear_out", False)
 
 
 class TransformerEncoderConfig(ConfigClass):
@@ -96,6 +104,7 @@ class TransformerTypesConst(ConstantHolder):
         RNN_LEGACY: CMHSE Paper GRU.
     """
     TRANSFORMER_LEGACY = "transformer"
+    TRANSFORMER_TORCH = "transformer_torch"
     RNN_LEGACY = "rnn"
 
 
@@ -106,7 +115,7 @@ class TransformerLegacy(nn.Module):
     The COOT transformer (In total there are 4 of these.)
     """
 
-    def __init__(self, cfg: TransformerConfig, feature_dim: int, return_atn: bool = False):
+    def __init__(self, cfg: TransformerConfig, feature_dim: int):
         super().__init__()
         error_txt = f"Transformer construction error: feature_dim "\
                     f"{feature_dim}. set output_dim of network before."
@@ -143,7 +152,10 @@ class TransformerLegacy(nn.Module):
         # self-attention transformer
         assert input_dim == cfg.selfatn.hidden_dim, (f"Input dim at this point of {input_dim} must match transformer"
                                                      f"dim of {cfg.selfatn.hidden_dim}")
-        self.tf = TransformerEncoder(cfg.selfatn)
+        transformer_class = TransformerEncoder
+
+        self.tf = transformer_class(self.cfg.selfatn)
+
         # # subspace disabled for now
         # self.tf = SubspaceTransformerEncoder(
         #     cfg.num_layers, input_dim, cfg.num_heads,
@@ -153,24 +165,9 @@ class TransformerLegacy(nn.Module):
 
         # build transformer for context
         self.use_context = cfg.use_context
+        self.tf_context = None
         if self.use_context:
-            # # disabled different methods for context aggregation since we found the one that worked
-            # self.atn_ctx_type = cfg.atn_ctx_type
-            # self.atn_ctx_output_method = cfg.atn_ctx_output_method
-            # # disabled subspacing again
-            # if cfg.atn_ctx_with_subspaces:
-            #     raise NotImplementedError
-            #     # disabled for now
-            #     self.tf_context = SubspaceTransformerEncoder(
-            #         cfg.atn_ctx_num_layers,
-            #         input_dim,
-            #         cfg.atn_ctx_num_heads,
-            #         cfg.atn_ctx_pointwise_ff_dim,
-            #         cfg.dropout, cfg.activation,
-            #         cfg.atn_ctx_ss_subspace,
-            #         cfg.atn_ss_kernels, verbose=True, return_atn=return_atn)
-            # else:
-            self.tf_context = TransformerEncoder(cfg.crossatn, return_atn=return_atn)
+            self.tf_context = transformer_class(cfg.crossatn)
 
         # use another FC on output before pooling
         self.output_fc = None
@@ -187,6 +184,9 @@ class TransformerLegacy(nn.Module):
             if cfg.pooler_config.num_layers > 1:
                 input_dim *= cfg.pooler_config.num_layers
         self.output_dim = input_dim
+        self.linear_out = None
+        if self.cfg.linear_out:
+            self.linear_out = nn.Linear(self.cfg.output_dim, self.cfg.output_dim, bias=False)
 
         # run the initializer
         init_network(self, cfg.weight_init_type, cfg.weight_init_std)
@@ -207,13 +207,18 @@ class TransformerLegacy(nn.Module):
     def forward(self, features: th.FloatTensor, mask: th.BoolTensor, lengths: th.LongTensor,
                 hidden_state: Optional[th.FloatTensor]):
         """
+        COOT forward pass. This is used in RetrievalModelManager to compute the embeddings.
+
         Args:
-            features:
-            mask:
-            lengths:
-            hidden_state:
+            features: Input features with shape (batch_size, max_seq_len, dim_features)
+            mask: Mask with 0 for real data, 1 for padded elements to be ignored. Shape (batch_size, max_seq_len)
+            lengths: Sequence length per datapoint (must correspond to the mask) shape (batch_size)
+            hidden_state: Optional hidden state for cross-attention with shape (batch_size, dim_hidden)
 
         Returns:
+            Tuple of:
+                Features after pooling with shape (batch_size, dim_output)
+                Features before pooling with shape (batch_size, max_seq_len, dim_hidden)
         """
         # print("ATN IN: feat",features.shape,"mask",mask.shape)
         # (batch, seq, input_dim)
@@ -243,13 +248,13 @@ class TransformerLegacy(nn.Module):
             # (batch, seq, new_dim)
 
         # apply transformer
-        features, features_atn = self.tf(features, features, features, mask)
+        features = self.tf(features, features, features, mask)
         # print("after transformer", features.shape, len(atns), atns[0].shape)
 
         # (batch, seq, new_dim)
 
         # apply transformer context
-        add_after_pool, ctx_atn = None, None
+        add_after_pool = None
         if self.use_context:
             assert hidden_state is not None
             # hidden state shape (batch, dim_clip)
@@ -262,14 +267,14 @@ class TransformerLegacy(nn.Module):
             # here we have to actually mask the query
             mask_ctx = mask
 
-            ctx, ctx_atn = self.tf_context(hidden_state, features, features, mask_ctx)
+            ctx = self.tf_context(hidden_state, features, features, mask_ctx)
             # output is size 1, remove the dim for pooling
             # print(f"context out {ctx.shape}")
 
             add_after_pool = ctx.squeeze(1)
 
         # apply pooling
-        pooled, pooled_atn = self.pooler(features, mask, lengths)
+        pooled = self.pooler(features, mask, lengths)
 
         if add_after_pool is not None:
             # concatenate result of global context cross-attention to global representation
@@ -284,7 +289,10 @@ class TransformerLegacy(nn.Module):
             # print("output fc", pooled.shape)
             # (batch, final_dim)
         # print("reg_loss",pool_reg_loss)
-        return pooled, features, pooled_atn, features_atn, ctx_atn
+
+        if self.linear_out:
+            pooled = self.linear_out(pooled)
+        return pooled, features
 
 
 class LearnableClsToken(nn.Module):
@@ -329,7 +337,7 @@ class TransformerEncoder(nn.Module):
     Transformer Encoder.
     """
 
-    def __init__(self, cfg: TransformerEncoderConfig, return_atn: bool = False):
+    def __init__(self, cfg: TransformerEncoderConfig):
         super().__init__()
 
         self.cfg = cfg
@@ -338,7 +346,7 @@ class TransformerEncoder(nn.Module):
             [TransformerEncoderLayer(
                 self.cfg.hidden_dim, self.cfg.num_heads, self.cfg.pointwise_ff_dim, self.cfg.dropout,
                 self.cfg.activation.name, activation_cfg=self.cfg.activation, norm_name=self.cfg.norm.name,
-                norm_cfg=self.cfg.norm, return_atn=return_atn)
+                norm_cfg=self.cfg.norm)
                 for _ in range(self.cfg.num_layers)])
 
     def forward(self, query, key, value, mask):
@@ -347,7 +355,7 @@ class TransformerEncoder(nn.Module):
             query: (batch_size, query_len, d_model)
             key: (batch_size, key_len, d_model)
             value: (batch_size, key_len, d_model)
-            mask: (batch_size, query_len)
+            mask: (batch_size, key_len)
 
         Returns:
             output (batch_size, query_len, d_model)
@@ -362,20 +370,13 @@ class TransformerEncoder(nn.Module):
         # parts can be discarded on the output pool
 
         mask_expanded = mask.unsqueeze(1).expand(batch_size, query_len, key_len)
-        # mask shape (batch_size, query_len, key_len) dtype bool
+        # print(mask_expanded.shape)
+        # (batch_size, query_len, key_len) dtype bool
 
-        sources = None
-        atns = []
+        sources = query
         for encoder_layer in self.encoder_layers:
-            sources, atn = encoder_layer(query, key, value, mask_expanded)
-            # update query for next layer
-            query = sources
-            if atn is not None:
-                atns.append(atn)
-        if len(atns) == 0:
-            return sources, None
-        atns = th.stack(atns, dim=1)
-        return sources, atns
+            sources = encoder_layer(query, key, value, mask_expanded)
+        return sources
 
 
 class TransformerEncoderLayer(nn.Module):
@@ -384,17 +385,16 @@ class TransformerEncoderLayer(nn.Module):
     """
 
     def __init__(
-            self, d_model: int, heads_count: int, d_ff: int, dropout_prob: float = 0.,
+            self, d_model: int, num_heads: int, d_ff: int, dropout_prob: float = 0.,
             activation_name: str = ActivationConst.GELU, activation_cfg: Optional[ActivationConfig] = None,
             norm_name: str = NormalizationConst.LAYERNORM_COOT,
-            norm_cfg: Optional[NormalizationConfig] = None, return_atn: bool = False):
+            norm_cfg: Optional[NormalizationConfig] = None):
         super().__init__()
 
         if d_ff == 0:
             d_ff = d_model
-        self.return_atn = return_atn
         self.self_attention_layer = Sublayer(
-            MultiHeadAttention(heads_count, d_model, dropout_prob, return_atn=self.return_atn),
+            MultiHeadAttention(num_heads, d_model, dropout_prob),
             d_model, norm_name=norm_name, norm_cfg=norm_cfg)
         self.pointwise_feedforward_layer = Sublayer(
             PointwiseFeedForwardNetwork(d_ff, d_model, dropout_prob, activation_name, activation_cfg=activation_cfg),
@@ -415,11 +415,11 @@ class TransformerEncoderLayer(nn.Module):
         # sources: (batch_size, seq_len, d_model)
         # mask: (batch_size, seq_len, seq_len)
 
-        sources, atn = self.self_attention_layer(query, key, value, sources_mask)
+        sources = self.self_attention_layer(query, key, value, sources_mask)
         sources = self.dropout(sources)
         sources = self.pointwise_feedforward_layer(sources)
 
-        return sources, atn
+        return sources
 
 
 class Sublayer(nn.Module):
@@ -455,19 +455,18 @@ class MultiHeadAttention(nn.Module):
     Multi-head attention.
     """
 
-    def __init__(self, heads_count, d_model, dropout_prob, return_atn=False):
+    def __init__(self, num_heads, d_model, dropout_prob):
         super().__init__()
 
-        assert d_model % heads_count == 0,\
-            f"model dim {d_model} not divisible by {heads_count} heads"
+        assert d_model % num_heads == 0,\
+            f"model dim {d_model} not divisible by {num_heads} heads"
 
-        self.return_atn = return_atn
-        self.d_head = d_model // heads_count
-        self.heads_count = heads_count
-        self.query_projection = nn.Linear(d_model, heads_count * self.d_head)
-        self.key_projection = nn.Linear(d_model, heads_count * self.d_head)
-        self.value_projection = nn.Linear(d_model, heads_count * self.d_head)
-        self.final_projection = nn.Linear(d_model, heads_count * self.d_head)
+        self.d_head = d_model // num_heads
+        self.num_heads = num_heads
+        self.query_projection = nn.Linear(d_model, num_heads * self.d_head)
+        self.key_projection = nn.Linear(d_model, num_heads * self.d_head)
+        self.value_projection = nn.Linear(d_model, num_heads * self.d_head)
+        self.final_projection = nn.Linear(d_model, num_heads * self.d_head)
         self.dropout = nn.Dropout(dropout_prob)
         self.softmax = nn.Softmax(dim=3)
 
@@ -481,7 +480,7 @@ class MultiHeadAttention(nn.Module):
         Args:
             query: (batch_size, query_len, model_dim)
             key: (batch_size, key_len, model_dim)
-            value: (batch_size, value_len, model_dim)
+            value: (batch_size, key_len_len, model_dim)
             mask_expanded: (batch_size, query_len, key_len)
             _layer_cache: DecoderState (unused)
 
@@ -491,39 +490,38 @@ class MultiHeadAttention(nn.Module):
         # print("attention mask", mask)
         batch_size, query_len, d_model = query.size()
 
-        d_head = d_model // self.heads_count
+        d_head = d_model // self.num_heads
 
-        query_projected = self.query_projection(query)
-        key_projected = self.key_projection(key)
-        value_projected = self.value_projection(value)
+        query_projected = self.query_projection(query)  # shape (batch_size, query_len, num_heads, d_head)
+        key_projected = self.key_projection(key)  # shape (batch_size, key_len, num_heads, d_head)
+        value_projected = self.value_projection(value)  # shape (batch_size, key_len, num_heads, d_head)
 
         batch_size, key_len, d_model = key_projected.size()
         batch_size, value_len, d_model = value_projected.size()
 
-        query_heads = query_projected.view(
-            batch_size, query_len, self.heads_count, d_head).transpose(1, 2)
-        # (batch_size, heads_count, query_len, d_head)
-
+        query_heads = query_projected.view(batch_size, query_len, self.num_heads, d_head).transpose(1, 2)
         # print("query_heads", query_heads.shape)
-        # print(batch_size, key_len, self.heads_count, d_head)
-        # print(key_projected.shape)
-        key_heads = key_projected.view(
-            batch_size, key_len, self.heads_count, d_head).transpose(1, 2)
-        # (batch_size, heads_count, key_len, d_head)
+        # (batch_size, num_heads, query_len, d_head)
 
-        value_heads = value_projected.view(
-            batch_size, value_len, self.heads_count, d_head).transpose(1, 2)
-        # (batch_size, heads_count, value_len, d_head)
+        key_heads = key_projected.view(batch_size, key_len, self.num_heads, d_head).transpose(1, 2)
+        # print("key_heads", key_heads.shape)
+        # (batch_size, num_heads, key_len, d_head)
 
-        attention_weights = self.scaled_dot_product(
-            query_heads, key_heads)
-        # (batch_size, heads_count, query_len, key_len)
+        value_heads = value_projected.view(batch_size, value_len, self.num_heads, d_head).transpose(1, 2)
+        # print("value_heads", value_heads.shape)
+        # (batch_size, num_heads, key_len, d_head)
+
+        attention_weights = self.scaled_dot_product(query_heads, key_heads)
+        # print("attention_weights", attention_weights.shape)
+        # (batch_size, num_heads, query_len, key_len)
 
         if mask_expanded is not None:
-            # print("attention_weights", attention_weights.shape)
             mask_expanded_per_head = mask_expanded.unsqueeze(1).expand_as(attention_weights)
+            # print("mask_expanded_per_head", mask_expanded_per_head.shape)
             # shape (batch_size, num_heads, query_len, key_len)
             attention_weights = attention_weights.masked_fill(mask_expanded_per_head, -nntrainer.typext.INF)
+            # print("attention_weights", attention_weights.shape)
+            # shape (batch_size, num_heads, query_len, query_len)
 
         # DONT Save attention to the object
         attention = self.softmax(attention_weights)
@@ -531,31 +529,28 @@ class MultiHeadAttention(nn.Module):
 
         attention_dropped = self.dropout(attention)
         context_heads = th.matmul(attention_dropped, value_heads)
-        # shape (batch_size, heads_count, query_len, d_head)
+        # shape (batch_size, num_heads, query_len, d_head)
         # print("context_heads", context_heads.shape)
 
         context_sequence = context_heads.transpose(1, 2)
-        # (batch_size, query_len, heads_count, d_head)
+        # (batch_size, query_len, num_heads, d_head)
 
         context = context_sequence.reshape(batch_size, query_len, d_model)
         # (batch_size, query_len, d_model)
         final_output = self.final_projection(context)
         # print("final_output", final_output.shape)
 
-        if not self.return_atn:
-            return final_output, None
-        return final_output, attention
+        return final_output
 
     def scaled_dot_product(self, query_heads, key_heads):
         """
         Args:
-             query_heads: (batch_size, heads_count, query_len, d_head)
-             key_heads: (batch_size, heads_count, key_len, d_head)
+             query_heads: (batch_size, num_heads, query_len, d_head)
+             key_heads: (batch_size, num_heads, key_len, d_head)
         """
         key_heads_transposed = key_heads.transpose(2, 3)
-        dot_product = th.matmul(
-            query_heads, key_heads_transposed)
-        # (batch_size, heads_count, query_len, key_len)
+        dot_product = th.matmul(query_heads, key_heads_transposed)
+        # (batch_size, num_heads, query_len, key_len)
 
         attention_weights = dot_product / np.sqrt(self.d_head)
         return attention_weights

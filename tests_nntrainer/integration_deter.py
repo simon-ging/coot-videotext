@@ -6,7 +6,7 @@ from copy import deepcopy
 
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
-
+from torch import cuda
 from nntrainer.arguments import setup_config_file_from_experiment_identifier
 from nntrainer.data import create_loader
 from nntrainer.examples.mlp_mnist import MLPMNISTExperimentConfig, MLPMNISTTrainer, MLPModelManager, MNISTExperimentType
@@ -25,6 +25,11 @@ def test_deterministic():
     cfg = MLPMNISTExperimentConfig(config)
     cfg.dataset_train.num_workers = 0
     cfg.dataset_val.num_workers = 0
+
+    if not cuda.is_available():
+        # make this test safe in cpu environment
+        cfg.use_multi_gpu = False
+        cfg.use_cuda = False
 
     def setup_test():
         # reset the seed

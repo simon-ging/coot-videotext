@@ -52,7 +52,6 @@ class ContrastiveLoss(nn.Module):
     """
     Regular Contrastive Loss between 2 groups of embeddings
     """
-
     def __init__(self, margin: float, max_violation: bool = False, norm: bool = True, use_cuda: bool = True):
         super().__init__()
         self.margin = margin
@@ -115,7 +114,6 @@ class CycleConsistencyLoss(nn.Module):
 
     Default values are the resulted best
     """
-
     def __init__(self, num_samples: int = 1, compute_half_cycles: bool = False, use_cuda: bool = True,
                  verbose: bool = False, print_fn: Callable = print):
         super().__init__()

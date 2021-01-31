@@ -1,35 +1,43 @@
 # COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning
 
+**2020-01-31** (v0.3.3): We publish our Video Captioning code.
+
 **2020-12-31** (v0.2.6):  We release our Deep-Learning Research Framework as open-source to contribute to the DL / CV community. [nntrainer library documentation](nntrainer/README.md)
 
 **2020-10-22** (v0.1): This repository is the official PyTorch implementation of our [paper](https://arxiv.org/abs/2011.00597) published at NeurIPS 2020 ([slides](assets/slides_coot.pdf), [poster](assets/poster_coot.pdf), [poster session](https://neurips.cc/virtual/2020/protected/poster_ff0abbcc0227c9124a804b084d161a2d.html))
 
-![build](https://github.com/gingsi/coot-videotext/workflows/build/badge.svg) Test coverage: **16%**
+![build](https://github.com/gingsi/coot-videotext/workflows/build/badge.svg) Test coverage: **28%**
 
 <p align="center"><img src="assets/logo.png" alt="Logo" title="Logo" /></p>
 
 ## Table of Contents
 
-  * [Features](#features)
-  * [Installation](#installation)
-  * [Prepare datasets](#prepare-datasets)
-	 * [Precompute all the text features](#precompute-all-the-text-features)
-	 * [Download and extract video data](#download-and-extract-video-data)
-  * [Prepare pretrained models / embeddings](#prepare-pretrained-models--embeddings)
-  * [Train and validate](#train-and-validate)
-	 * [Useful script flags](#useful-script-flags)
-	 * [Show training results](#show-training-results)
-	 * [Advanced usage](#advanced-usage)
-  * [Extract your own embeddings](#extract-your-own-embeddings)
-	 * [Working with the embeddings](#working-with-the-embeddings)
-  * [Tables 2 &amp; 3](#tables-2--3)
-  * [Troubleshooting](#troubleshooting)
-	 * [Downloading Torrents](#downloading-torrents)
-	 * [Training / inference crashes](#training--inference-crashes)
-  * [Model Outline](#model-outline)
-  * [Acknowledgements](#acknowledgements)
-  * [License](#license)
-  * [Citation](#citation)
+* [Table of Contents](#table-of-contents)
+* [Features](#features)
+* [Installation](#installation)
+* [Prepare datasets for Video Retrieval](#prepare-datasets-for-video-retrieval)
+  * [Precompute all the text features](#precompute-all-the-text-features)
+  * [Download and extract video data](#download-and-extract-video-data)
+* [Prepare pretrained models / embeddings](#prepare-pretrained-models--embeddings)
+* [Train and validate Video Retrieval](#train-and-validate-video-retrieval)
+  * [Useful script flags](#useful-script-flags)
+  * [Show training results](#show-training-results)
+  * [Advanced usage](#advanced-usage)
+* [Extract your own embeddings](#extract-your-own-embeddings)
+  * [Working with the embeddings](#working-with-the-embeddings)
+* [Video Captioning with the MART model](#video-captioning-with-the-mart-model)
+  * [Setup](#setup)
+  * [Train and validate MART on COOT embeddings](#train-and-validate-mart-on-coot-embeddings)
+  * [Train original MART (on video features)](#train-original-mart-on-video-features)
+  * [Train MART on your own computed embeddings](#train-mart-on-your-own-computed-embeddings)
+* [Troubleshooting](#troubleshooting)
+  * [Training / inference crashes](#training--inference-crashes)
+  * [Java meteor metric is crashing](#java-meteor-metric-is-crashing)
+  * [Downloading Torrents](#downloading-torrents)
+* [Model Outline (Retrieval)](#model-outline-retrieval)
+* [Acknowledgements](#acknowledgements)
+* [License](#license)
+* [Citation](#citation)
 
 ## Features
 
@@ -40,7 +48,7 @@
 
 ## Installation
 
-We use `python=3.8.5a` and `pytorch=1.7.0`. Tested on `Windows 10` and `Ubuntu 18.04`.
+We use `python=3.8.5` and `pytorch=1.7.1`. Tested on `Windows 10` and `Ubuntu 18.04`.
 
 ~~~bash
 git clone https://github.com/gingsi/coot-videotext
@@ -48,7 +56,7 @@ cd coot-videotext
 pip install -r requirements.txt
 ~~~
 
-## Prepare datasets
+## Prepare datasets for Video Retrieval
 
 The default datasets folder is `data/`. To use a different folder, supply all scripts with flag `--data_path /new/path` or change `repo_config.py`. On linux you could also make a link: `ln -s /new/path data`.
 
@@ -93,10 +101,11 @@ tar -C data/youcook2 -xzvf data/youcook2/video_feat_100m.tar.gz
 tar -xzvf provided_models.tar.gz
 tar -xzvf provided_embeddings.tar.gz
 # after extraction, the folder structure should look like this:
+ **Embeddings:** [Download Link](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing) ~230mb
 # provided_models/MODEL_NAME.pth and provided_embeddings/EMBEDDING_NAME.pth
 ~~~
 
-## Train and validate
+## Train and validate Video Retrieval
 
 Results are in `experiments/` folder. Training info: LR reduced on plateau. Early stopping after 16 bad epochs. No fixed seeds!
 
@@ -160,8 +169,7 @@ python train_retrieval.py -g paper2020 -e yc2_100m_coot -r myrun
 ## Extract your own embeddings
 
 ~~~bash
-# ### YouCook2: HowTo100M features
-# extract embeddings on validation and train set
+# ### Extract YouCook2: HowTo100M embeddings
 python train_retrieval.py -g paper2020 -e yc2_100m_coot -r valset --load_model provided_models/yc2_100m_coot.pth --reset --validate --save_embeddings
 python train_retrieval.py -g paper2020 -e yc2_100m_coot -r trainset --load_model provided_models/yc2_100m_coot.pth --reset --validate --save_embeddings -o dataset_val.split=train
 
@@ -169,7 +177,7 @@ python train_retrieval.py -g paper2020 -e yc2_100m_coot -r trainset --load_model
 python test_embeddings_retrieval.py experiments/retrieval/paper2020/yc2_100m_coot_valset1/embeddings/embeddings_0.h5
 python test_embeddings_retrieval.py experiments/retrieval/paper2020/yc2_100m_coot_trainset1/embeddings/embeddings_0.h5
 
-# ### Extract YouCook2: ResNet / ResNeXt features
+# ### Extract YouCook2: ResNet / ResNeXt embeddings
 python train_retrieval.py -g paper2020 -e yc2_2d3d_coot -r valset --load_model provided_models/yc2_2d3d_coot.pth --reset --validate --save_embeddings
 python train_retrieval.py -g paper2020 -e yc2_2d3d_coot -r trainset --load_model provided_models/yc2_2d3d_coot.pth --reset --validate --save_embeddings -o dataset_val.split=train
 
@@ -213,18 +221,119 @@ key_to_idx["--1DO2V4K74_val_1"]
 
 We also provide the global context embeddings which are used in our Contextual Transformer. There, the local embeddings are pooled to the final output and a cross-attention layer inputs the information from the global context (see the paper). We also provide the unnormalized version for all the embeddings (before using L2-Norm).
 
-## Tables 2 & 3
+## Video Captioning with the MART model
 
-| Model | Paragraph->Video R@1 | R@5  | R@50 | Video->Paragraph R@1 | R@5  | R@50 | Train time |
-| ----- | -------------------- | ---- | ---- | -------------------- | ---- | ---- | ---------- |
-| COOT  | 61.3                 | 86.7 | 98.7 | 60.6                 | 87.9 | 98.7 | ~70min     |
+Note: Training is not seeded and the captioning metrics are volatile, train the models several times to get high confidence of the performance.
 
-| Model                             | Paragraph->Video R@1 | R@5  | R@10  | MR   | Sentence->Clip R@1 | R@5  | R@50 | MR   | Train time |
-| --------------------------------- | -------------------- | ---- | ----- | ---- | ------------------ | ---- | ---- | ---- | ---------- |
-| COOT with ResNet/ResNeXt features | 51.2                 | 79.9 | 88.20 | 1    | 6.6                | 17.3 | 25.1 | 48   | ~180min    |
-| COOT with HowTo100m features      | 78.3                 | 96.2 | 97.8  | 1    | 16.9               | 40.5 | 52.5 | 9    | ~16 min    |
+### Setup
+
+1. Make sure you installed the updated requirements with `pip install -r requirements.txt`
+1. If you have problems with the `pycocoevalcap` package try uninstalling it and installing it with this command instead: `pip install git+https://github.com/salaniz/pycocoevalcap`
+1. The METEOR metric requires `java`. Either install the latest Java 1.8 through the system (Tested with `Java RE 1.8.0_261`) or install with conda `conda install openjdk`. Make sure your locale is set correct i.e. `echo $LANG` outputs `en_US.UTF-8`
+1. Download and extract: [COOT output Embeddings](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing) ~230mb, [Pretrained models](https://drive.google.com/file/d/1IV85_DXWx1SJL9ZJuT6Qvvyx8obE9f9x/view?usp=sharing) ~540 mb
+1. To reproduce the original MART results, you will need the input features, see next chapter for setup.
+
+~~~bash
+tar -xzvf provided_embeddings.tar.gz
+tar -xzvf provided_models.tar.gz
+~~~
+
+### Train and validate MART on COOT embeddings
+
+~~~bash
+# ### YouCook2
+# Train MART on COOT video+clip embeddings (table 4 row 10)
+python train_caption.py -c config/caption/paper2020/yc2_100m_coot_vidclip_mart.yaml
+# Train MART on COOT clip embeddings (table 4 row 6)
+python train_caption.py -c config/caption/paper2020/yc2_100m_coot_clip_mart.yaml
+# Train MART on COOT clip embeddings, retrieval trained on 2D/3D features (table 4 row 5)
+python train_caption.py -c config/caption/paper2020/yc2_2d3d_coot_vidclip_mart.yaml
+# Train original MART (table 4 row 3)
+python train_caption.py -c config/caption/paper2020/yc2_mart.yaml
+
+# ### ActivityNet
+# Train MART on COOT video+clip embeddings (table 5 row 9)
+python -m train_mart -c config/mart/paper2020/anet_coot_vidclip_mart.yaml
+# Train original MART (table 5 row 3)
+python -m train_mart -c config/mart/paper2020/anet_mart.yaml
+
+# show trained results
+python -m run.show_mart -m base
+
+# evaluate provided models
+python train_caption.py -c config/caption/paper2020/yc2_100m_coot_vidclip_mart.yaml --validate --load_model provided_models_caption/yc2_100m_coot_vidclip_mart.pth
+# etc.
+~~~
+
+Modify the configurations to train on the other models and features (Table 4 rows 4-9 and Table 5 rows 4-8). These models are not extensively tested
+
+- Vanilla Transformer: `recurrent:false`, `mtrans:true`, `max_v_len:1`
+- MART without recurrence: `recurrent:false`
+- TransformerXL `xl:true` optionally with gradient `xl_grad:true`
+
+### Setup data for original MART (trained on video features)
+
+You can reproduce the original [MART](https://github.com/jayleicn/recurrent-transformer) results with our code. The captioning model is trained conditionally on extracted video appearance and optical flow features instead of COOT embeddings.
+
+Download features from Google Drive: [rt_anet_feat.tar.gz (39GB)](https://drive.google.com/file/d/1mbTmMOFWcO30PIcuSpYiZ1rqoy5ltE3A/view?usp=sharing) and [rt_yc2_feat.tar.gz (12GB)](https://drive.google.com/file/d/1mj76DwNexFCYovUt8BREeHccQn_z_By9/view?usp=sharing). These features are repacked from features provided by [densecap](https://github.com/salesforce/densecap#annotation-and-feature). Extract the features such that they can be found in `data/mart_video_feature/activitynet/*.npy` and `data/mart_video_feature/youcook2/*.npy` respectively.
+
+The following extraction code expects the downloaded `.tar.gz` files in the repository's root.
+
+~~~bash
+# Prepare youcook2 video features
+mkdir -p data/mart_video_feature/youcook2
+tar -xvzf rt_yc2_feat.tar.gz -C data/mart_video_feature/youcook2
+mv data/mart_video_feature/youcook2/rt_yc2_feat/trainval/*.npy data/mart_video_feature/youcook2
+rm -r data/mart_video_feature/youcook2/rt_yc2_feat
+
+# Prepare activitynet video features
+mkdir -p data/mart_video_feature/activitynet
+tar -xvzf rt_anet_feat.tar.gz -C data/mart_video_feature/activitynet
+mv data/mart_video_feature/activitynet/rt_anet_feat/trainval/*.npy data/mart_video_feature/activitynet
+rm -r data/mart_video_feature/activitynet/rt_anet_feat
+~~~
+
+Run the training once the features are prepared:
+
+### Train MART on your own computed embeddings
+
+Assuming you have run the YouCook2 example in chapter "Extract your own embeddings", you should be able to run the captioning experiments on these embeddings and get the same results as with the provided embeddings.
+
+Modify field `coot_model_name` in the configuration to `yc2_100m_coot_extracted` or alternatively use the flag `-o coot_model_name=yc2_100m_coot_extracted`
+
+~~~bash
+# move the extracted embeddings from experiments/ folder to a new folder embeddings/
+mkdir -p embeddings
+mv experiments/retrieval/paper2020/yc2_100m_coot_valset1/embeddings/embeddings_0.h5 embeddings/yc2_100m_coot_extracted_val.h5
+mv experiments/retrieval/paper2020/yc2_100m_coot_trainset1/embeddings/embeddings_0.h5 embeddings/yc2_100m_coot_extracted_train.h5
+
+# modify the configuration file 
+# run experiment for table 4 row 10 again but with the new embeddings instead
+python -m train_mart -c config/mart/paper2020/anet_coot_vidclip_mart.yaml --coot_feat_dir embeddings
+~~~
+
+Note that if you have designed your own COOT with different embedding dimensions you have to give the new dimensions to the captioning training script: `--coot_dim_vid DIMVID` (default 768)  `--coot_dim_clip DIMCLIP` (default 384). Depending on which `--coot_mode MODE` you use update the video feature size: `--video_feature_size X`. Mode `vidclip`: `X = DIMVID + DIMCLIP` (default 1152), mode `clip`: `X = DIMCLIP` (default 384), mode `vidclipctx`: `X = DIMVID + 2 * DIMCLIP` (default 1536), mode `vid`: `X = DIMVID` (default 768)
+
+### Rebuild MART cache
+
+Download [glove]( http://nlp.stanford.edu/data/glove.6B.zip) extract file  `pretrained_models/glove.6B.300d.txt` run `python -m run.mart_build_vocab youcook2` and
+`python -m run.mart_build_vocab activitynet`
 
 ## Troubleshooting
+
+### Training / inference crashes
+
+Try the following steps to debug problems with the code:
+
+Update GPU drivers / PyTorch version / Check if CUDA works correctly. Set `--workers 0` to disable multiprocessing. Change the `config.yaml` you are loading at the end of the file: `cudnn_benchmark: false`, `cudnn_deterministic: true`, `fp16_train: false`, `fp16_val: false`. Try training on the CPU by setting `use_cuda: false`, `use_multi_gpu: false` in the config.
+
+Preloading features is disabled by default. If you enable it and get "OSError: Too many open files", you have to increase the open file limit e.g. by running `ulimit -n 100000`. You can disable it with `--no_preload`.
+
+### Java meteor metric is crashing
+
+Run `python -m run.meteor_test` to reproduce the problem. Run `java -version` to see your java version. Install `java JRE 1.8.0_281` or greater if you are admin. Alternatively run `conda install openjdk` to install java into your conda environment.
+
+Make sure the locale in the system is correct. `echo $LANG` should output `en_US.UTF-8`. Run `locale -a` to see if this language is installed. If not, install it. Run `export LANG="en_US.UTF-8"` and test meteor again. To change the language permanently, edit the `/etc/default/locale` file or alternatively add the command to your `.bashrc`file if you don't have sudo.
 
 ### Downloading Torrents
 
@@ -242,15 +351,7 @@ If you have problems downloading our torrents, try following this tutorial:
 1. If it still doesn't download after waiting for an hour, feel free to open an issue.
 1. Once you are done, please keep seeding.
 
-### Training / inference crashes
-
-Try the following steps to debug problems with the code:
-
-Update GPU drivers / PyTorch version / Check if CUDA works correctly. Set `--workers 0` to disable multiprocessing. Change the `config.yaml` you are loading at the end of the file: `cudnn_benchmark: false`, `cudnn_deterministic: true`, `fp16_train: false`, `fp16_val: false`. Try training on the CPU by setting `use_cuda: false`, `use_multi_gpu: false` in the config.
-
-Preloading features is disabled by default. If you enable it and get "OSError: Too many open files", you have to increase the open file limit e.g. by running `ulimit -n 100000`. You can disable it with `--no_preload`.
-
-## Model Outline
+## Model Outline (Retrieval)
 
 <p align="center"><img src="assets/thumbnail.png" alt="Method" title="Method" /></p>
 
@@ -263,14 +364,15 @@ For the full references see our [paper](https://arxiv.org/abs/2011.00597). We es
 - Zhang et al. for retrieval code and activitynet-densecaptions features: [CMHSE](https://github.com/zbwglory/CMHSE) 
 - Wang et al. for their captioning model and code: [MART](https://github.com/jayleicn/recurrent-transformer) 
 - Miech et al. for their [Video feature extractor](https://github.com/antoine77340/video_feature_extractor) and their [HowTo100M Model](https://github.com/antoine77340/MIL-NCE_HowTo100M)
+- Falkner et al. for their [HPBandster / BOHB](https://github.com/automl/HpBandSter) code for hyperparameter optimization.
 
-We also thank the authors of all packages in the `requirements.txt` file.
+We thank the authors of all packages in the `requirements.txt` and the authors of [gh-md-toc](https://github.com/ekalinin/github-markdown-toc), [ffmpeg](https://ffmpeg.org/), [GulpIO](https://github.com/TwentyBN/GulpIO) for their helpful tools.
 
 Credit of the bird image to [Laurie Boyle](https://www.flickr.com/photos/92384235@N02/10551357354/) - Australia.
 
 ## License
 
-Code is licensed under Apache2 (Copyright 2020 S. Ging). Dataset features are licensed under Apache2 (Copyright to the respective owners).
+Code is licensed under Apache2 (Copyright 2021 S. Ging) if not specified otherwise in the file header. Dataset features are licensed under Apache2 (Copyright to the respective owners).
 
 ## Citation
 

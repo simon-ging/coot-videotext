@@ -1,59 +1,15 @@
 """
 Definition of constants and configurations for retrieval.
-
-Private: These need to be outsourced here to avoid circular imports.
 """
 
 import logging
 import traceback
 from typing import Any, Dict
 
-from nntrainer import data as nn_data, lr_scheduler, models, optimization, trainer_configs, typext, utils
+from coot.loss_fn import ContrastiveLossConfig, LossesConst
+from nntrainer import lr_scheduler, models, optimization, trainer_configs, typext, utils
 from nntrainer.utils import ConfigNamesConst as Conf
 
-
-# ---------- Constants ----------
-
-class DataTypesConst(typext.ConstantHolder):
-    """
-    Store config field values for COOT.
-    """
-    COOT_OUTPUT = "coot_output"
-    RETRIEVAL = "retrieval"
-
-
-class ExperimentTypesConst(typext.ConstantHolder):
-    """
-    Store model types for COOT.
-    """
-    CAPTIONING = "captioning"
-    RETRIEVAL = "retrieval"
-
-
-class CootMetersConst(typext.ConstantHolder):
-    """
-    Additional metric fields.
-    """
-    TRAIN_LOSS_CC = "train/loss_cc"
-    TRAIN_LOSS_CONTRASTIVE = "train/loss_contr"
-    VAL_LOSS_CC = "val/loss_cc"
-    VAL_LOSS_CONTRASTIVE = "val/loss_contr"
-    RET_MODALITIES = ["vid2par", "par2vid", "cli2sen", "sen2cli"]
-    RET_MODALITIES_SHORT = ["v2p", "p2v", "c2s", "s2c"]
-    RET_METRICS = ["r1", "r5", "r10", "r50", "medr", "meanr"]
-
-
-class RetrievalNetworksConst(typext.ConstantHolder):
-    """
-    Store network names for COOT.
-    """
-    NET_VIDEO_LOCAL = "net_video_local"
-    NET_VIDEO_GLOBAL = "net_video_global"
-    NET_TEXT_LOCAL = "net_text_local"
-    NET_TEXT_GLOBAL = "net_text_global"
-
-
-# ---------- Configs ----------
 
 class RetrievalConfig(trainer_configs.BaseExperimentConfig):
     """
@@ -68,7 +24,8 @@ class RetrievalConfig(trainer_configs.BaseExperimentConfig):
     def __init__(self, config: Dict[str, Any], *, is_train: bool = True) -> None:
         super().__init__(config)
         self.name = "config_ret"
-
+        self.dim_feat_global: int = config.pop("dim_feat_global", 768)
+        self.dim_feat_local: int = config.pop("dim_feat_local", 384)
         if not is_train:
             # Disable dataset caching
             logger = logging.getLogger(utils.LOGGER_NAME)
@@ -81,11 +38,10 @@ class RetrievalConfig(trainer_configs.BaseExperimentConfig):
             self.val = RetrievalValConfig(config.pop(Conf.VAL))
             self.dataset_train = RetrievalDatasetConfig(config.pop(Conf.DATASET_TRAIN))
             self.dataset_val = RetrievalDatasetConfig(config.pop(Conf.DATASET_VAL))
-            self.logging = utils.BaseLoggingConfig(config.pop(Conf.LOGGING))
+            self.logging = trainer_configs.BaseLoggingConfig(config.pop(Conf.LOGGING))
             self.saving = trainer_configs.BaseSavingConfig(config.pop(Conf.SAVING))
             self.optimizer = optimization.OptimizerConfig(config.pop(Conf.OPTIMIZER))
             self.lr_scheduler = lr_scheduler.SchedulerConfig(config.pop(Conf.LR_SCHEDULER))
-
             self.model_cfgs = {}
             for key in RetrievalNetworksConst.values():
                 self.model_cfgs[key] = models.TransformerConfig(config.pop(key))
@@ -125,6 +81,9 @@ class RetrievalTrainConfig(trainer_configs.BaseTrainConfig):
     def __init__(self, config: Dict[str, Any]) -> None:
         super().__init__(config)
         self.loss_cycle_cons: float = config.pop("loss_cycle_cons")
+        loss_config = config.pop("contrastive_loss_config")
+        if self.loss_func == LossesConst.CONTRASTIVE:
+            self.contrastive_loss_config = ContrastiveLossConfig(loss_config)
 
 
 class RetrievalTrainerState(trainer_configs.BaseTrainerState):
@@ -137,7 +96,7 @@ class RetrievalTrainerState(trainer_configs.BaseTrainerState):
     # another_field: float = 0
 
 
-class RetrievalDatasetConfig(nn_data.BaseDatasetConfig):
+class RetrievalDatasetConfig(trainer_configs.BaseDatasetConfig):
     """
     Retrieval dataset configuration class.
 
@@ -187,3 +146,44 @@ class RetrievalDatasetConfig(nn_data.BaseDatasetConfig):
         assert isinstance(self.text_preprocessing, str)
         assert isinstance(self.preload_vid_feat, bool)
         assert isinstance(self.preload_text_feat, bool)
+
+
+# ---------- Constants ----------
+
+class DataTypesConst(typext.ConstantHolder):
+    """
+    Store config field values for COOT.
+    """
+    COOT_OUTPUT = "coot_output"
+    RETRIEVAL = "retrieval"
+
+
+class ExperimentTypesConst(typext.ConstantHolder):
+    """
+    Store model types for COOT.
+    """
+    RETRIEVAL = "retrieval"
+    CAPTION = "caption"
+
+
+class CootMetersConst(typext.ConstantHolder):
+    """
+    Additional metric fields.
+    """
+    TRAIN_LOSS_CC = "train/loss_cc"
+    TRAIN_LOSS_CONTRASTIVE = "train/loss_contr"
+    VAL_LOSS_CC = "val/loss_cc"
+    VAL_LOSS_CONTRASTIVE = "val/loss_contr"
+    RET_MODALITIES = ["vid2par", "par2vid", "cli2sen", "sen2cli"]
+    RET_MODALITIES_SHORT = ["v2p", "p2v", "c2s", "s2c"]
+    RET_METRICS = ["r1", "r5", "r10", "r50", "medr", "meanr"]
+
+
+class RetrievalNetworksConst(typext.ConstantHolder):
+    """
+    Store network names for COOT.
+    """
+    NET_VIDEO_LOCAL = "net_video_local"
+    NET_VIDEO_GLOBAL = "net_video_global"
+    NET_TEXT_LOCAL = "net_text_local"
+    NET_TEXT_GLOBAL = "net_text_global"

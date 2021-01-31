@@ -12,7 +12,7 @@ from torch import nn
 from torch.utils import data as th_data
 from tqdm import tqdm
 
-from nntrainer import data, lr_scheduler, models, optimization, trainer_base, trainer_configs, typext, utils
+from nntrainer import lr_scheduler, models, optimization, trainer_base, trainer_configs, typext
 from nntrainer.utils import ConfigNamesConst as Conf, TrainerPathConst as Paths
 
 
@@ -50,9 +50,9 @@ class MLPMNISTExperimentConfig(trainer_configs.BaseExperimentConfig):
         self.name = "config_default"
         self.train = trainer_configs.BaseTrainConfig(config.pop(Conf.TRAIN))
         self.val = trainer_configs.BaseValConfig(config.pop(Conf.VAL))
-        self.dataset_train = data.BaseDatasetConfig(config.pop(Conf.DATASET_TRAIN))
-        self.dataset_val = data.BaseDatasetConfig(config.pop(Conf.DATASET_VAL))
-        self.logging = utils.BaseLoggingConfig(config.pop(Conf.LOGGING))
+        self.dataset_train = trainer_configs.BaseDatasetConfig(config.pop(Conf.DATASET_TRAIN))
+        self.dataset_val = trainer_configs.BaseDatasetConfig(config.pop(Conf.DATASET_VAL))
+        self.logging = trainer_configs.BaseLoggingConfig(config.pop(Conf.LOGGING))
         self.saving = trainer_configs.BaseSavingConfig(config.pop(Conf.SAVING))
         self.optimizer = optimization.OptimizerConfig(config.pop(Conf.OPTIMIZER))
         self.lr_scheduler = lr_scheduler.SchedulerConfig(config.pop(Conf.LR_SCHEDULER))

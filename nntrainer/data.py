@@ -2,12 +2,11 @@
 Dataset utilities.
 """
 
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
 
 from torch.utils import data
 
-from nntrainer import typext
-from nntrainer.typext import ConfigClass
+from nntrainer import trainer_configs, typext
 
 
 class DataSplitConst(typext.ConstantHolder):
@@ -19,29 +18,7 @@ class DataSplitConst(typext.ConstantHolder):
     TEST = "test"
 
 
-class BaseDatasetConfig(ConfigClass):
-    """
-    Base Dataset Configuration class
-
-    Args:
-        config: Configuration dictionary to be loaded, dataset part.
-    """
-
-    def __init__(self, config: Dict) -> None:
-        # general dataset info
-        self.name: str = config.pop("name")
-        self.data_type: str = config.pop("data_type")
-        self.subset: str = config.pop("subset")
-        self.split: str = config.pop("split")
-        self.max_datapoints: int = config.pop("max_datapoints")
-        self.shuffle: bool = config.pop("shuffle")
-        # general dataloader configuration
-        self.pin_memory: bool = config.pop("pin_memory")
-        self.num_workers: int = config.pop("num_workers")
-        self.drop_last: bool = config.pop("drop_last")
-
-
-def create_loader(dataset: data.Dataset, cfg: BaseDatasetConfig, batch_size: int, *,
+def create_loader(dataset: data.Dataset, cfg: trainer_configs.BaseDatasetConfig, batch_size: int, *,
                   collate_fn: Optional[Callable[[List[Any]], Any]] = None) -> data.DataLoader:
     """
     Create torch dataloader from torch dataset.

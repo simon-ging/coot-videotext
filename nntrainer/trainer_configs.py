@@ -4,8 +4,7 @@ Configuration setup for TrainerBase. Moved to separate file to avoid circular im
 from copy import deepcopy
 from typing import Dict, List, Optional
 
-from coot.loss_fn import ContrastiveLossConfig, LossesConst
-from nntrainer import data, lr_scheduler, optimization, typext, utils
+from nntrainer import lr_scheduler, optimization, typext, utils
 from nntrainer.utils import ConfigNamesConst
 
 
@@ -41,6 +40,9 @@ class BaseExperimentConfig(typext.ConfigClass):
 
     Args:
         config: Configuration dictionary to be loaded.
+
+    Attributes:
+        ...
     """
 
     def __init__(self, config: Dict, strict: bool = True) -> None:
@@ -83,9 +85,9 @@ class DefaultExperimentConfig(BaseExperimentConfig):
         self.name = "config_default"
         self.train = BaseTrainConfig(config.pop(ConfigNamesConst.TRAIN))
         self.val = BaseValConfig(config.pop(ConfigNamesConst.VAL))
-        self.dataset_train = data.BaseDatasetConfig(config.pop(ConfigNamesConst.DATASET_TRAIN))
-        self.dataset_val = data.BaseDatasetConfig(config.pop(ConfigNamesConst.DATASET_VAL))
-        self.logging = utils.BaseLoggingConfig(config.pop(ConfigNamesConst.LOGGING))
+        self.dataset_train = BaseDatasetConfig(config.pop(ConfigNamesConst.DATASET_TRAIN))
+        self.dataset_val = BaseDatasetConfig(config.pop(ConfigNamesConst.DATASET_VAL))
+        self.logging = BaseLoggingConfig(config.pop(ConfigNamesConst.LOGGING))
         self.saving = BaseSavingConfig(config.pop(ConfigNamesConst.SAVING))
         self.optimizer = optimization.OptimizerConfig(config.pop(ConfigNamesConst.OPTIMIZER))
         self.lr_scheduler = lr_scheduler.SchedulerConfig(config.pop(ConfigNamesConst.LR_SCHEDULER))
@@ -106,8 +108,6 @@ class BaseTrainConfig(typext.ConfigClass):
         assert isinstance(self.num_epochs, int) and self.num_epochs > 0
         self.loss_func: str = config.pop("loss_func")
         assert isinstance(self.loss_func, str)
-        if self.loss_func == LossesConst.CONTRASTIVE:
-            self.contrastive_loss_config = ContrastiveLossConfig(config.pop("contrastive_loss_config"))
         self.clip_gradient: float = config.pop("clip_gradient")
         assert isinstance(self.clip_gradient, (int, float)) and self.clip_gradient >= -1
 
@@ -147,6 +147,12 @@ class BaseSavingConfig(typext.ConfigClass):
 
     Args:
         config: Configuration dictionary to be loaded, saving part.
+
+    Attributes:
+        keep_freq: Frequency to keep epochs. 1: Save after each epoch. Default -1: Keep nothing except best and last.
+        save_last: Keep last epoch. Needed to continue training. Default: true
+        save_best: Keep best epoch. Default: true
+        save_opt_state: Save optimizer and lr scheduler. Needed to continue training. Default: true
     """
 
     def __init__(self, config: Dict) -> None:
@@ -155,3 +161,44 @@ class BaseSavingConfig(typext.ConfigClass):
         self.save_best: bool = config.pop("save_best")
         self.save_opt_state: bool = config.pop("save_opt_state")
         assert self.keep_freq >= -1
+
+
+class BaseDatasetConfig(typext.ConfigClass):
+    """
+    Base Dataset Configuration class
+
+    Args:
+        config: Configuration dictionary to be loaded, dataset part.
+    """
+
+    def __init__(self, config: Dict) -> None:
+        # general dataset info
+        self.name: str = config.pop("name")
+        self.data_type: str = config.pop("data_type")
+        self.subset: str = config.pop("subset")
+        self.split: str = config.pop("split")
+        self.max_datapoints: int = config.pop("max_datapoints")
+        self.shuffle: bool = config.pop("shuffle")
+        # general dataloader configuration
+        self.pin_memory: bool = config.pop("pin_memory")
+        self.num_workers: int = config.pop("num_workers")
+        self.drop_last: bool = config.pop("drop_last")
+
+
+class BaseLoggingConfig(typext.ConfigClass):
+    """
+    Base Logging Configuration Class
+
+    Args:
+        config: Configuration dictionary to be loaded, logging part.
+    """
+
+    def __init__(self, config: Dict) -> None:
+        self.step_train: int = config.pop("step_train")
+        self.step_val: int = config.pop("step_val")
+        self.step_gpu: int = config.pop("step_gpu")
+        self.step_gpu_once: int = config.pop("step_gpu_once")
+        assert self.step_train >= -1
+        assert self.step_val >= -1
+        assert self.step_gpu >= -1
+        assert self.step_gpu_once >= -1

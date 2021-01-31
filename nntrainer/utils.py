@@ -8,13 +8,14 @@ import os
 import sys
 from collections import defaultdict
 from copy import deepcopy
+from json import JSONEncoder
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import pathspec
 
 from nntrainer import typext
-from nntrainer.typext import ConfigClass, ConstantHolder
+from nntrainer.typext import ConstantHolder
 
 
 DEFAULT = "default"
@@ -22,25 +23,6 @@ REF = "ref"
 NONE = "none"
 LOGGER_NAME = "trainlog"
 LOGGING_FORMATTER = logging.Formatter("%(levelname)5s %(message)s", datefmt="%m%d %H%M%S")
-
-
-class BaseLoggingConfig(ConfigClass):
-    """
-    Base Logging Configuration Class
-
-    Args:
-        config: Configuration dictionary to be loaded, logging part.
-    """
-
-    def __init__(self, config: Dict) -> None:
-        self.step_train: int = config.pop("step_train")
-        self.step_val: int = config.pop("step_val")
-        self.step_gpu: int = config.pop("step_gpu")
-        self.step_gpu_once: int = config.pop("step_gpu_once")
-        assert self.step_train >= -1
-        assert self.step_val >= -1
-        assert self.step_gpu >= -1
-        assert self.step_gpu_once >= -1
 
 
 class LogLevelsConst(ConstantHolder):
@@ -411,6 +393,19 @@ def match_folder(folder: Union[str, Path], exp_type: str, exp_group: str = None,
     return found
 
 
+class BetterJSONEncoder(JSONEncoder):
+    """
+    Enable the JSON encoder to handle Path objects.
+
+    It would be nice to also handle numpy arrays, tensors etc. but that is not required currently.
+    """
+
+    def default(self, o: Any) -> Any:
+        if isinstance(o, Path):
+            return str(o)
+        return super().default(o)
+
+
 # ---------- Constants ----------
 
 class ConfigNamesConst(typext.ConstantHolder):
@@ -439,12 +434,20 @@ class TrainerPathConst(typext.ConstantHolder):
     DIR_METRICS = "metrics"
     DIR_EMBEDDINGS = "embeddings"
     DIR_TB = "tb"
+    DIR_PROFILING = "profiling"
+    DIR_CAPTION = "caption"
+    DIR_ANNOTATIONS = "annotations"
     FILE_PREFIX_TRAINERSTATE = "trainerstate"
     FILE_PREFIX_MODEL = "model"
     FILE_PREFIX_OPTIMIZER = "optimizer"
     FILE_PREFIX_DATA = "data"
     FILE_PREFIX_METRICS_STEP = "metrics_step"
     FILE_PREFIX_METRICS_EPOCH = "metrics_epoch"
+    FILE_PREFIX_TRANSL_RAW = "translations"
+    FILE_PREFIX_TRANSL_LANG = "results_lang"
+    FILE_PREFIX_TRANSL_STAT = "results_stat"
+    FILE_PREFIX_TRANSL_REP = "results_rep"
+    FILE_PREFIX_TRANSL_METRICS = "text_metrics"
 
 
 class MetricComparisonConst(typext.ConstantHolder):

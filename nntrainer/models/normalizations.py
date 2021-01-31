@@ -53,8 +53,8 @@ class NormalizationConfig(ConfigClass):
     Normalization config object. Stores hyperparameters.
 
     Examples:
-        >>> NormalizationConfig("layernorm")
-        >>> NormalizationConfig({"name": "layernorm", "affine": "false"})
+        >>> NormalizationConfig("layernorm_coot")
+        >>> NormalizationConfig({"name": "layernorm_coot", "affine": "false"})
 
     Args:
         name_or_config: Either provide string name of the activation function (e.g. "layernorm") or a dict with name and
@@ -88,7 +88,6 @@ class LayerNormalization(nn.Module):
 
     Different results from the PyTorch implementation.
     """
-
     def __init__(self, normalized_shape: Union[int, List[int], th.Size], epsilon: float = 1e-6):
         super().__init__()
 

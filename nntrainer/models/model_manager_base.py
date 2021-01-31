@@ -6,6 +6,7 @@ This way, trainer and model can be separated in the code.
 
 from typing import Any, Dict, List, Tuple
 
+import numpy as np
 import torch as th
 from torch import nn
 
@@ -89,6 +90,14 @@ class BaseModelManager:
             state: Dict with model names and keys and state dict of the model as value.
         """
         self.was_loaded = True
+
+        # backwards compatibility to recurrent_transformer (original MART repository style checkpoints)
+        if sorted(list(state.keys())) == ["epoch", "model", "model_cfg", "opt"]:
+            state_dict = state["model"]
+            print(f"Backward compatible loading for recurrent_transformer epoch {state['epoch']} with "
+                  f"{sum([np.product(param.shape) for param in state_dict.values()])} parameters")
+            self.model_dict['model'].load_state_dict(state_dict)
+            return
         # backwards compatibility to coot-videotext
         if isinstance(state, list):
             for i, model_name in enumerate(self.model_dict.keys()):
@@ -107,8 +116,7 @@ class BaseModelManager:
                     new_state[param_name] = param
                 self.model_dict[model_name].load_state_dict(new_state)
             return
-
-        # modern loading
+        # newest version of loading. keys in the state correspond to keys in the model_dict.
         for model_name, state_dict in state.items():
             self.model_dict[model_name].load_state_dict(state_dict)
 

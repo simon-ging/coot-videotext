@@ -104,10 +104,10 @@ class PositionalEncodingSinCos(nn.Module):
     def forward(self, x, step=None):
         # x *= math.sqrt(self.dim) # not sure
         # print(x.size(1))
-        if step is None:
-            x = x + self.pe[:x.size(1), :]
-        else:
-            x = x + self.pe[:, step]
+        assert step is None, "Never used step"
+        x = x + self.pe[:x.shape[1], :]
+        # else:
+        #     # x = x + self.pe[:, step]
         x = self.dropout(x)
         return x
 

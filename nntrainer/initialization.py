@@ -70,7 +70,7 @@ def init_network(net: nn.Module, init_type: str, init_std: float, verbose: bool 
     for key, val in net.named_parameters():
         if verbose:
             debug_print(key, end=" ")
-        if "layer_normalization" in key or "input_norm." in key or "norm_input." in key:
+        if "layer_normalization" in key or "input_norm." in key or "norm_input." in key or "encoder.norm." in key:
             # old layer norm is already initialized with gain=1, bias=0
             # new layer norm i have no idea
             debug_print("skip layernorm")
