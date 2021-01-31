@@ -73,10 +73,7 @@ class RetrievalTrainer(trainer_base.BaseTrainer):
         # ---------- loss ----------
 
         # contrastive loss
-        if self.cfg.train.loss_func == loss_fn.LossesConst.CONTRASTIVE:
-            self.loss_contr = ContrastiveLoss(self.cfg.train.contrastive_loss_config.margin, use_cuda=self.cfg.use_cuda)
-        elif self.cfg.train.loss_func == loss_fn.LossesConst.CROSSENTROPY:
-            self.loss_contr = CrossEntropyContrastiveLoss(self.cfg.train.contrastive_loss_config)
+        self.loss_contr = ContrastiveLoss(self.cfg.train.contrastive_loss_config.margin, use_cuda=self.cfg.use_cuda)
         else:
             raise NotImplementedError
         if self.cfg.use_cuda:
