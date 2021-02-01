@@ -739,3 +739,4 @@ class BaseTrainer:
         Returns:
             List of files to cleanup.
         """
+        return []
