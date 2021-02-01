@@ -14,3 +14,4 @@ mypy # typing
 pycodestyle # code style check. pycodestyle --max-line-length 120 .
 pylint # linter
 pycocoevalcap # text evaluation # alternative: # pip install git+https://github.com/salaniz/pycocoevalcap
+nltk
