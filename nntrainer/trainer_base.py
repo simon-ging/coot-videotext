@@ -720,7 +720,7 @@ class BaseTrainer:
             # delete safely (don't crash if they don't exist for some reason)
             for file in [self.exp.get_models_file(ep_num), self.exp.get_optimizer_file(ep_num),
                          self.exp.get_trainerstate_file(ep_num), self.exp.get_metrics_epoch_file(ep_num),
-                         self.exp.get_metrics_step_file(ep_num)]:
+                         self.exp.get_metrics_step_file(ep_num)] + self.get_files_for_cleanup(ep_num):
                 if file.is_file():
                     os.remove(file)
                 else:
