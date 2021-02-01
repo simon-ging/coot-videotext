@@ -383,7 +383,7 @@ If you find our work or code useful, please consider citing our paper:
 @inproceedings{ging2020coot,
   title={COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning},
   author={Simon Ging and Mohammadreza Zolfaghari and Hamed Pirsiavash and Thomas Brox},
-  booktitle={Conference on Neural Information Processing Systems},
+  booktitle={Advances on Neural Information Processing Systems (NeurIPS)},
   year={2020}
 }
 ~~~
