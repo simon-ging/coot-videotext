@@ -449,8 +449,6 @@ class MartTrainer(trainer_base.BaseTrainer):
                         [e["video_feature"] for e in batched_data],
                         [e["input_mask"] for e in batched_data],
                         [e["token_type_ids"] for e in batched_data]]
-
-
                     dec_seq_list = self.translator.translate_batch(
                         model_inputs, use_beam=self.cfg.use_beam, recurrent=True,
                         untied=False, xl=self.cfg.xl)

@@ -19,6 +19,7 @@ Notes:
     7. `trainer.validate_epoch()` Evalues a single epoch.
 """
 
+import numpy as np
 from torch.utils import data
 from torchvision.datasets import MNIST
 from torchvision.transforms import ToTensor
@@ -56,9 +57,13 @@ def main():
         print(cfg)
 
     # set seed
-    if cfg.random_seed is not None:
-        print(f"Set seed to {cfg.random_seed}")
-        set_seed(cfg.random_seed, set_deterministic=False)  # set deterministic via config if needed
+    verb = "Set seed"
+    if cfg.random_seed is None:
+        cfg.random_seed = np.random.randint(0, 2 ** 15, dtype=np.int32)
+        verb = "Randomly generated seed"
+    print(f"{verb} {cfg.random_seed} deterministic {cfg.cudnn_deterministic} "
+          f"benchmark {cfg.cudnn_benchmark}")
+    set_seed(cfg.random_seed, cudnn_deterministic=cfg.cudnn_deterministic, cudnn_benchmark=cfg.cudnn_benchmark)
 
     # create datasets
     train_set = MNIST(str(dataset_path), train=True, download=True, transform=ToTensor())

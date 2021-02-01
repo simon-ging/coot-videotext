@@ -831,12 +831,8 @@ class BertLMPredictionHead(nn.Module):
         return hidden_states  # (N, L, vocab_size)
 
 
-"""
-TransformerXL specific modules, 
-from https://github.com/kimiyoung/transformer-xl/blob/master/pytorch/mem_transformer.py 
-"""
-
-
+# ---------- TransformerXL specific modules, ----------
+# from https://github.com/kimiyoung/transformer-xl/blob/master/pytorch/mem_transformer.py
 class PositionalEmbeddingXL(nn.Module):
     def __init__(self, demb):
         super().__init__()

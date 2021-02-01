@@ -212,7 +212,7 @@ class RecursiveCaptionDataset(data.Dataset):
             sampling_sec = 0.5  # hard coded, only support 0.5
             with open(self.duration_file, "r") as f:
                 for line in f:
-                    vid_name, vid_dur, vid_frame = [l.strip() for l in line.split(",")]
+                    vid_name, vid_dur, vid_frame = [entry.strip() for entry in line.split(",")]
                     if self.dset_name == "activitynet":
                         frame_to_second[vid_name] = float(vid_dur) * int(float(vid_frame) * 1. / int(
                             float(vid_dur)) * sampling_sec) * 1. / float(vid_frame)

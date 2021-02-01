@@ -729,12 +729,12 @@ class BaseTrainer:
         if len(cleaned) > 0:
             self.logger.debug(f"Deleted epochs: {cleaned}")
 
-    def get_files_for_cleanup(self, epoch: int) -> List[Path]:
+    def get_files_for_cleanup(self, _epoch: int) -> List[Path]:
         """
         Implement this in the child trainer.
 
         Args:
-            epoch: Epoch to cleanup
+            _epoch: Epoch to cleanup
 
         Returns:
             List of files to cleanup.

@@ -134,7 +134,7 @@ class CaptionEvaluator:
         self.scores = self.evaluate_para()
 
     def evaluate_para(self):
-        # This method averages the tIoU precision from METEOR, Bleu, etc. across videos 
+        # This method averages the tIoU precision from METEOR, Bleu, etc. across videos
         gt_vid_ids = self.get_gt_vid_ids()
         vid2idx = {k: i for i, k in enumerate(gt_vid_ids)}
         gts = {vid2idx[k]: [] for k in gt_vid_ids}

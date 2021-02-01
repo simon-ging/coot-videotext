@@ -15,7 +15,7 @@ from torch.nn import functional as F
 from torch.utils import data
 from tqdm import tqdm
 
-from coot import loss_fn, model_retrieval
+from coot import model_retrieval
 from coot.configs_retrieval import (
     CootMetersConst as CMeters, ExperimentTypesConst, RetrievalConfig, RetrievalTrainerState)
 from coot.dataset_retrieval import RetrievalDataBatchTuple

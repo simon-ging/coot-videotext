@@ -64,8 +64,8 @@ class _LRSchedule(ABC):
         # warning for exceeding t_total (only active with warmup_linear
         if not nowarn and self.warn_t_total and progress > 1. and progress > self.warned_for_t_total_at_progress:
             logger.warning(
-                "Training beyond specified 't_total'. Learning rate multiplier set to {}. Please set 't_total' of {} correctly."
-                    .format(ret, self.__class__.__name__))
+                "Training beyond specified 't_total'. Learning rate multiplier set to {}."
+                "Please set 't_total' of {} correctly.".format(ret, self.__class__.__name__))
             self.warned_for_t_total_at_progress = progress
         # end warning
         return ret
@@ -96,7 +96,8 @@ class WarmupCosineSchedule(_LRSchedule):
         """
         :param warmup:      see LRSchedule
         :param t_total:     see LRSchedule
-        :param cycles:      number of cycles. Default: 0.5, corresponding to cosine decay from 1. at progress==warmup and 0 at progress==1.
+        :param cycles:      number of cycles. Default: 0.5, corresponding to cosine decay from 1.
+            at progress==warmup and 0 at progress==1.
         :param kw:
         """
         super(WarmupCosineSchedule, self).__init__(warmup=warmup,
@@ -138,7 +139,8 @@ class WarmupCosineWithHardRestartsSchedule(WarmupCosineSchedule):
 class WarmupCosineWithWarmupRestartsSchedule(WarmupCosineWithHardRestartsSchedule):
     """
     All training progress is divided in `cycles` (default=1.) parts of equal length.
-    Every part follows a schedule with the first `warmup` fraction of the training steps linearly increasing from 0. to 1.,
+    Every part follows a schedule with the first `warmup` fraction of the training steps
+    linearly increasing from 0. to 1.,
     followed by a learning rate decreasing from 1. to 0. following a cosine curve.
     """
 
@@ -240,9 +242,10 @@ class BertAdam(Optimizer):
         lr: learning rate
         warmup: portion of t_total for the warmup, -1  means no warmup. Default: -1
         t_total: total number of training steps for the learning
-            rate schedule, -1  means constant learning rate of 1. (no warmup regardless of warmup setting). Default: -1
+            rate schedule, -1  means constant learning rate of 1. (no warmup regardless of warmup setting).Default: -1
         schedule: schedule to use for the warmup (see above).
-            Can be `'warmup_linear'`, `'warmup_constant'`, `'warmup_cosine'`, `'none'`, `None` or a `_LRSchedule` object (see below).
+            Can be `'warmup_linear'`, `'warmup_constant'`, `'warmup_cosine'`, `'none'`, `None` or a
+                `_LRSchedule` object (see below).
             If `None` or `'none'`, learning rate is always kept constant.
             Default : `'warmup_linear'`
         b1: Adams b1. Default: 0.9
