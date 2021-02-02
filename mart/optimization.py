@@ -8,13 +8,16 @@ References:
 check if this is needed? Can't I just use regular Adam, AdamW, RAdam, AdaBelief or something
 """
 
-import math
-import torch
-from torch.optim import Optimizer
-from torch.nn.utils import clip_grad_norm_
-import logging
 import abc
+import logging
+import math
 import sys
+from typing import Dict
+
+import torch
+from torch import nn
+from torch.nn.utils import clip_grad_norm_
+from torch.optim import Optimizer
 
 
 logger = logging.getLogger(__name__)
@@ -195,12 +198,13 @@ SCHEDULES = {
 }
 
 
-class EMA(object):
+class EMA:
     """
     Exponential Moving Average for model parameters.
+
     References:
-    [1] https://github.com/BangLiu/QANet-PyTorch/blob/master/model/modules/ema.py
-    [2] https://github.com/hengruo/QANet-pytorch/blob/e2de07cd2c711d525f5ffee35c3764335d4b501d/main.py
+        [1] https://github.com/BangLiu/QANet-PyTorch/blob/master/model/modules/ema.py
+        [2] https://github.com/hengruo/QANet-pytorch/blob/e2de07cd2c711d525f5ffee35c3764335d4b501d/main.py
     """
 
     def __init__(self, decay):
@@ -215,23 +219,32 @@ class EMA(object):
         decay = min(self.decay, (1 + step) / (10.0 + step))
         for name, param in model.named_parameters():
             if param.requires_grad:
-                assert name in self.shadow
-                new_average =\
-                    (1.0 - decay) * param.data + decay * self.shadow[name]
+                assert name in self.shadow, f"Parameter {name} not found in EMA. shadow has {len(self.shadow)} entries"
+                new_average = (1.0 - decay) * param.data + decay * self.shadow[name]
                 self.shadow[name] = new_average.clone()
 
-    def assign(self, model):
+    def assign(self, model, update_model: bool = True):
         for name, param in model.named_parameters():
             if param.requires_grad:
                 assert name in self.shadow
                 self.original[name] = param.data.clone()
-                param.data = self.shadow[name]
+                if update_model:
+                    param.data = self.shadow[name]
 
     def resume(self, model):
         for name, param in model.named_parameters():
             if param.requires_grad:
-                assert name in self.shadow
-                param.data = self.original[name]
+                assert name in self.shadow, f"Parameter {name} not found in EMA. shadow has {len(self.shadow)} entries"
+                try:
+                    param.data = self.original[name]
+                except KeyError as e:
+                    raise KeyError(f"Parameter {name} not found in model. ({len(self.original)} entries)") from e
+
+    def state_dict(self) -> Dict[str, torch.Tensor]:
+        return self.shadow
+
+    def set_state_dict(self, state_dict: Dict[str, torch.Tensor]):
+        self.shadow = state_dict
 
 
 class BertAdam(Optimizer):

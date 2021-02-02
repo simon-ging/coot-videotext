@@ -119,6 +119,8 @@ class BaseModelManager:
         # newest version of loading. keys in the state correspond to keys in the model_dict.
         for model_name, state_dict in state.items():
             self.model_dict[model_name].load_state_dict(state_dict)
+            sep = "\n"
+            print(f"Loaded model: {model_name}params:\n{sep.join(name for name in state_dict.keys())}")
 
     def get_params_opt_simple(self, model: nn.Module) -> (
             Tuple[List[Dict[str, Any]], List[str], List[th.Tensor]]):

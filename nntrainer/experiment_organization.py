@@ -146,6 +146,18 @@ class ExperimentFilesHandler:
         """
         return self.path_models / f"{TrainerPathConst.FILE_PREFIX_MODEL}_{epoch}.pth"
 
+    def get_models_file_ema(self, epoch: Union[int, str]) -> Path:
+        """
+        Get file path for storing the model EMA weights.
+
+        Args:
+            epoch: Epoch.
+
+        Returns:
+            Path
+        """
+        return self.path_models / f"{TrainerPathConst.FILE_PREFIX_MODELEMA}_{epoch}.pth"
+
     def get_optimizer_file(self, epoch: Union[int, str]) -> Path:
         """
         Get file path for storing the model.

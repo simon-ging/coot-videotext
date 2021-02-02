@@ -194,10 +194,15 @@ class MartTrainer(trainer_base.BaseTrainer):
                 {"params": [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
             ]
             if cfg.ema_decay != -1:
-                self.ema = EMA(cfg.ema_decay)
+                # register EMA params
+                self.ema: EMA = EMA(cfg.ema_decay)
+                self.logger.info(f"Registering {sum(p.numel() for p in model.parameters())} params for EMA")
+                all_names = []
                 for name, p in model.named_parameters():
                     if p.requires_grad:
                         self.ema.register(name, p.data)
+                    all_names.append(name)
+                self.logger.debug('\n'.join(all_names))
 
             num_train_optimization_steps = train_loader_length * cfg.train.num_epochs
             self.optimizer = BertAdam(optimizer_grouped_parameters, lr=cfg.lr, warmup=cfg.lr_warmup_proportion,
@@ -210,6 +215,13 @@ class MartTrainer(trainer_base.BaseTrainer):
 
         # post init hook for checkpoint loading
         self.hook_post_init()
+
+        if self.load and not self.load_model:
+            # reload EMA weights from checkpoint (the shadow) and save the model parameters (the original)
+            ema_file = self.exp.get_models_file_ema(self.load_ep)
+            self.logger.info(f"Update EMA from {ema_file}")
+            self.ema.set_state_dict(th.load(str(ema_file)))
+            self.ema.assign(self.model, update_model=False)
 
     def train_model(self, train_loader: data.DataLoader, val_loader: data.DataLoader) -> None:
         """
@@ -372,6 +384,10 @@ class MartTrainer(trainer_base.BaseTrainer):
             if do_val:
                 # run validation including with ground truth tokens and translation without any text
                 _val_loss, _val_score, is_best, _metrics = self.validate_epoch(val_loader)
+
+            # save the EMA weights
+            ema_file = self.exp.get_models_file_ema(self.state.current_epoch)
+            th.save(self.ema.state_dict(), str(ema_file))
 
             # post-epoch hook: scheduler, save checkpoint, time bookkeeping, feed tensorboard
             self.hook_post_train_and_val_epoch(do_val, is_best)
@@ -668,5 +684,7 @@ class MartTrainer(trainer_base.BaseTrainer):
         Returns:
             List of files to cleanup.
         """
-        return [self.exp.get_translation_files(epoch, split="train"),
-                self.exp.get_translation_files(epoch, split="val")]
+        return [
+            # self.exp.get_translation_files(epoch, split="train"),
+            self.exp.get_translation_files(epoch, split="val"),
+            self.exp.get_models_file_ema(epoch)]

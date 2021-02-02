@@ -439,6 +439,7 @@ class TrainerPathConst(typext.ConstantHolder):
     DIR_ANNOTATIONS = "annotations"
     FILE_PREFIX_TRAINERSTATE = "trainerstate"
     FILE_PREFIX_MODEL = "model"
+    FILE_PREFIX_MODELEMA = "modelema"
     FILE_PREFIX_OPTIMIZER = "optimizer"
     FILE_PREFIX_DATA = "data"
     FILE_PREFIX_METRICS_STEP = "metrics_step"

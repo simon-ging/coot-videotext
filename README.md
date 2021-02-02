@@ -231,15 +231,17 @@ Note: Training is not seeded and the captioning metrics are volatile, train the 
 1. Make sure you installed the updated requirements with `pip install -r requirements.txt`
 1. If you have problems with the `pycocoevalcap` package try uninstalling it and installing it with this command instead: `pip install git+https://github.com/salaniz/pycocoevalcap`
 1. The METEOR metric requires `java`. Either install the latest Java 1.8 through the system (Tested with `Java RE 1.8.0_261`) or install with conda `conda install openjdk`. Make sure your locale is set correct i.e. `echo $LANG` outputs `en_US.UTF-8`
-1. Download and extract: [COOT output Embeddings](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing) ~230mb, [Pretrained models](https://drive.google.com/file/d/1IV85_DXWx1SJL9ZJuT6Qvvyx8obE9f9x/view?usp=sharing) ~540 mb
+1. Download and extract: [COOT output Embeddings](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing) ~230mb, [Pretrained Captioning models](https://drive.google.com/file/d/1IV85_DXWx1SJL9ZJuT6Qvvyx8obE9f9x/view?usp=sharing) ~540 mb
 1. To reproduce the original MART results, you will need the input features, see next chapter for setup.
 
 ~~~bash
 tar -xzvf provided_embeddings.tar.gz
-tar -xzvf provided_models.tar.gz
+tar -xzvf provided_models_caption.tar.gz
 ~~~
 
 ### Train and validate MART on COOT embeddings
+
+**Note:** Evaluation during training uses exponential moving averages by default and two models are saved each epoch (normal weights and EMA weights). The Captioning models we provide are normal weights (and not EMA weights).
 
 ~~~bash
 # ### YouCook2
@@ -254,12 +256,12 @@ python train_caption.py -c config/caption/paper2020/yc2_mart.yaml
 
 # ### ActivityNet
 # Train MART on COOT video+clip embeddings (table 5 row 9)
-python -m train_mart -c config/mart/paper2020/anet_coot_vidclip_mart.yaml
+python train_caption.py -c config/mart/paper2020/anet_coot_vidclip_mart.yaml
 # Train original MART (table 5 row 3)
-python -m train_mart -c config/mart/paper2020/anet_mart.yaml
+python train_caption.py -c config/mart/paper2020/anet_mart.yaml
 
 # show trained results
-python -m run.show_mart -m base
+python show_caption.py -m base
 
 # evaluate provided models
 python train_caption.py -c config/caption/paper2020/yc2_100m_coot_vidclip_mart.yaml --validate --load_model provided_models_caption/yc2_100m_coot_vidclip_mart.pth
