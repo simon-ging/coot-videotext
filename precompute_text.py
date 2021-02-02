@@ -194,7 +194,6 @@ def main():
             batch.to_cuda(non_blocking=True)
         batch_size = len(batch.key)
 
-
         total_max_seq_len = batch.tokens.shape[1]
         if total_max_seq_len <= max_text_len:
             # everything is fine
