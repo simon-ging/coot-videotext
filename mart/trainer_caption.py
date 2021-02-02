@@ -182,7 +182,7 @@ class MartTrainer(trainer_base.BaseTrainer):
 
         self.optimizer = None
         self.lr_scheduler = None
-        self.ema = None
+        self.ema = EMA(cfg.ema_decay)
         # skip optimizer if not training
         if not self.is_test:
             # Prepare optimizer
@@ -195,7 +195,6 @@ class MartTrainer(trainer_base.BaseTrainer):
             ]
             if cfg.ema_decay != -1:
                 # register EMA params
-                self.ema: EMA = EMA(cfg.ema_decay)
                 self.logger.info(f"Registering {sum(p.numel() for p in model.parameters())} params for EMA")
                 all_names = []
                 for name, p in model.named_parameters():
@@ -241,7 +240,7 @@ class MartTrainer(trainer_base.BaseTrainer):
             self.hook_pre_train_epoch()  # pre-epoch hook: set models to train, time book-keeping
 
             # check exponential moving average
-            if self.ema is not None and self.state.current_epoch != 0:
+            if self.ema is not None and self.state.current_epoch != 0 and self.cfg.ema_decay != -1:
                 # use normal parameters for training, not EMA model
                 self.ema.resume(self.model)
 
