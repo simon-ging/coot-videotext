@@ -194,16 +194,6 @@ def main():
             batch.to_cuda(non_blocking=True)
         batch_size = len(batch.key)
 
-        if model_name.startswith(TextModelConst.BART):
-            raise NotImplementedError("Decativated encoder/decopder architectures")
-            # hidden_states_decoder = None
-            # if model_name.startswith(TextModelConst.BART):
-            #     # encoder-decoder architecture
-            #     hidden_states = model_outputs["encoder_hidden_states"]
-            #     if not args.encoder_only:
-            #         hidden_states_decoder = model_outputs["decoder_hidden_states"]
-            # if hidden_states_decoder is not None:
-            #     layer_features = th.cat([layer_features, hidden_states_decoder[layer_num]], dim=-1)
 
         total_max_seq_len = batch.tokens.shape[1]
         if total_max_seq_len <= max_text_len:
