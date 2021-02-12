@@ -319,8 +319,8 @@ Note that if you have designed your own COOT with different embedding dimensions
 
 ### Rebuild MART cache
 
-Download [glove]( http://nlp.stanford.edu/data/glove.6B.zip) extract file  `pretrained_models/glove.6B.300d.txt` run `python -m run.mart_build_vocab youcook2` and
-`python -m run.mart_build_vocab activitynet`
+Download [glove]( http://nlp.stanford.edu/data/glove.6B.zip) extract file  `pretrained_models/glove.6B.300d.txt` run `python mart_build_vocab.py youcook2` and
+`python mart_build_vocab.py activitynet`
 
 ## Troubleshooting
 
@@ -334,7 +334,7 @@ Preloading features is disabled by default. If you enable it and get "OSError: T
 
 ### Java meteor metric is crashing
 
-Run `python -m run.meteor_test` to reproduce the problem. Run `java -version` to see your java version. Install `java JRE 1.8.0_281` or greater if you are admin. Alternatively run `conda install openjdk` to install java into your conda environment.
+Run `python meteor_test.py` to reproduce the problem. Run `java -version` to see your java version. Install `java JRE 1.8.0_281` or greater if you are admin. Alternatively run `conda install openjdk` to install java into your conda environment.
 
 Make sure the locale in the system is correct. `echo $LANG` should output `en_US.UTF-8`. Run `locale -a` to see if this language is installed. If not, install it. Run `export LANG="en_US.UTF-8"` and test meteor again. To change the language permanently, edit the `/etc/default/locale` file or alternatively add the command to your `.bashrc`file if you don't have sudo.
 
