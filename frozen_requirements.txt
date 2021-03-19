@@ -17,7 +17,7 @@ numpy==1.19.2
 olefile==0.46
 packaging==20.8
 pathspec==0.8.1
-pillow==8.0.1
+pillow==8.1.1
 pluggy==0.13.1
 psutil==5.8.0
 py==1.10.0
