@@ -193,7 +193,7 @@ class MartTrainer(trainer_base.BaseTrainer):
                  "weight_decay": 0.01},
                 {"params": [p for n, p in param_optimizer if any(nd in n for nd in no_decay)], "weight_decay": 0.0}
             ]
-            if cfg.ema_decay != -1:
+            if cfg.ema_decay > 0:
                 # register EMA params
                 self.logger.info(f"Registering {sum(p.numel() for p in model.parameters())} params for EMA")
                 all_names = []
@@ -221,6 +221,10 @@ class MartTrainer(trainer_base.BaseTrainer):
             self.logger.info(f"Update EMA from {ema_file}")
             self.ema.set_state_dict(th.load(str(ema_file)))
             self.ema.assign(self.model, update_model=False)
+
+        # disable ema when loading model directly or when decay is 0 / -1
+        if self.load_model or cfg.ema_decay <= 0:
+            self.ema = None
 
     def train_model(self, train_loader: data.DataLoader, val_loader: data.DataLoader) -> None:
         """
