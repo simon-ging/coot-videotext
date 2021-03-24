@@ -365,7 +365,7 @@ If you have problems downloading our torrents, try following this tutorial:
 For the full references see our [paper](https://arxiv.org/abs/2011.00597). We especially thank the creators of the following github repositories for providing helpful code:
 
 - Zhang et al. for retrieval code and activitynet-densecaptions features: [CMHSE](https://github.com/zbwglory/CMHSE) 
-- Wang et al. for their captioning model and code: [MART](https://github.com/jayleicn/recurrent-transformer) 
+- Lei et al. for their captioning model and code: [MART](https://github.com/jayleicn/recurrent-transformer) 
 - Miech et al. for their [Video feature extractor](https://github.com/antoine77340/video_feature_extractor) and their [HowTo100M Model](https://github.com/antoine77340/MIL-NCE_HowTo100M)
 - Falkner et al. for their [HPBandster / BOHB](https://github.com/automl/HpBandSter) code for hyperparameter optimization.
 
