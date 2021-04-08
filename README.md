@@ -1,6 +1,6 @@
 # COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning
 
-**2020-01-31** (v0.3.3): We publish our Video Captioning code.
+**2021-01-31** (v0.3.3): We publish our Video Captioning code.
 
 **2020-12-31** (v0.2.6):  We release our Deep-Learning Research Framework as open-source to contribute to the DL / CV community. [nntrainer library documentation](nntrainer/README.md)
 
