@@ -367,11 +367,12 @@ class BaseTrainer:
         """
         if self.load:
             assert not self.model_mgr.was_loaded, (
-                    f"Error: Loading epoch {self.load_ep} but already weights have been loaded. If you load weights for "
-                    f"warmstarting, you cannot run if the experiments has already saved checkpoints. Change the run name "
+                    f"Error: Loading epoch {self.load_ep} but already weights have been loaded. "
+                    f"If you load weights for warmstarting, you cannot run if the experiments "
+                    f"has already saved checkpoints. Change the run name "
                     f"or use --reset to delete the experiment run.")
             if self.load_model:
-                # load model from file. this would start training from epoch 0, but is usually only used for validation.
+                # load model from file. used for validation or to start training from a pretrained checkpoint.
                 self.logger.info(f"Loading model from checkpoint file {self.load_model}")
                 model_state = th.load(str(self.load_model))
                 self.model_mgr.set_model_state(model_state)
