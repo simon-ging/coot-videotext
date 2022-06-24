@@ -111,8 +111,8 @@ def fill_tensor_with_truncnorm(input_tensor: th.Tensor, *, mean: float = 0, std:
 
 # ---------- Profiling ----------
 
-def profile_gpu_and_ram() -> Tuple[
-    List[str], List[float], List[float], List[float], float, float, float]:
+def profile_gpu_and_ram(
+) -> Tuple[List[str], List[float], List[float], List[float], float, float, float]:
     """
     Profile GPU and RAM.
 

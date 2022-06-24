@@ -52,11 +52,15 @@ class BaseTrainer:
     """
 
     def __init__(
-            self, cfg: trainer_configs.DefaultExperimentConfig, model_mgr: models.BaseModelManager, exp_group: str,
+            self, cfg: trainer_configs.DefaultExperimentConfig, model_mgr: models.BaseModelManager,
+            exp_group: str,
             exp_name: str, run_name: str, train_loader_length: int, model_type: str, *,
-            log_dir: str = "experiments", log_level: Optional[int] = None, logger: Optional[logging.Logger] = None,
-            print_graph: bool = False, reset: bool = False, load_best: bool = False, load_epoch: Optional[int] = None,
-            load_model: Optional[str] = None, is_test: bool = False, exp_files_handler: ExperimentFilesHandler = None):
+            log_dir: str = "experiments", log_level: Optional[int] = None,
+            logger: Optional[logging.Logger] = None,
+            print_graph: bool = False, reset: bool = False, load_best: bool = False,
+            load_epoch: Optional[int] = None,
+            load_model: Optional[str] = None, is_test: bool = False,
+            exp_files_handler: ExperimentFilesHandler = None):
         assert "_" not in run_name, f"Run name {run_name} must not contain underscores."
         self.is_test: bool = is_test
 
@@ -72,7 +76,8 @@ class BaseTrainer:
         # create experiment helper for directories, if it wasn't already overwritten by the base trainer
         self.exp = exp_files_handler
         if self.exp is None:
-            self.exp = ExperimentFilesHandler(model_type, exp_group, exp_name, run_name, log_dir=log_dir)
+            self.exp = ExperimentFilesHandler(model_type, exp_group, exp_name, run_name,
+                                              log_dir=log_dir)
             self.exp.setup_dirs(reset=reset)
 
         # setup logging
@@ -82,7 +87,8 @@ class BaseTrainer:
                 self.log_level = utils.LogLevelsConst.INFO
             else:
                 self.log_level = log_level
-            self.logger = utils.create_logger(utils.LOGGER_NAME, log_dir=self.exp.path_logs, log_level=self.log_level)
+            self.logger = utils.create_logger(utils.LOGGER_NAME, log_dir=self.exp.path_logs,
+                                              log_level=self.log_level)
         else:
             self.logger = logger
             self.log_level = self.logger.level
@@ -103,8 +109,9 @@ class BaseTrainer:
             self.grad_scaler: Optional[GradScaler] = GradScaler()
 
         # logs some infos
-        self.logger.info(f"Running on cuda: {self.cfg.use_cuda}, multi-gpu: {self.cfg.use_multi_gpu}, "
-                         f"gpus found: {th.cuda.device_count()}, fp16 amp: {self.cfg.fp16_train}.")
+        self.logger.info(
+            f"Running on cuda: {self.cfg.use_cuda}, multi-gpu: {self.cfg.use_multi_gpu}, "
+            f"gpus found: {th.cuda.device_count()}, fp16 amp: {self.cfg.fp16_train}.")
         cudnn.enabled = self.cfg.cudnn_enabled
         cudnn.benchmark = self.cfg.cudnn_benchmark
         cudnn.deterministic = self.cfg.cudnn_deterministic
@@ -115,14 +122,15 @@ class BaseTrainer:
                 if self.cfg.use_cuda:
                     if not th.cuda.is_available():
                         raise RuntimeError(
-                            "CUDA requested but not available! Use --no_cuda to run on CPU.")
+                                "CUDA requested but not available! Use --no_cuda to run on CPU.")
                     if self.cfg.use_multi_gpu:
                         model = nn.DataParallel(model)
                     model = model.cuda()
                     self.model_mgr.model_dict[model_name] = model
             except RuntimeError as e:
-                raise RuntimeError(f"RuntimeError when putting model {type(model)} to cuda with DataParallel "
-                                   f"{self.cfg.use_multi_gpu}: {model.__class__.__name__}") from e
+                raise RuntimeError(
+                    f"RuntimeError when putting model {type(model)} to cuda with DataParallel "
+                    f"{self.cfg.use_multi_gpu}: {model.__class__.__name__}") from e
 
         # create metrics writer
         self.metrics = metric.MetricsWriter(self.exp)
@@ -140,7 +148,7 @@ class BaseTrainer:
         self.load_model = load_model
         if self.load_model:
             assert not load_epoch, (
-                "When given filepath with load_model, --load_epoch must not be set.")
+                    "When given filepath with load_model, --load_epoch must not be set.")
             self.load = True
         # automatically find best epoch otherwise
         elif len(ep_nums) > 0:
@@ -248,8 +256,8 @@ class BaseTrainer:
             Dictionary of optimizer and scheduler state dict.
         """
         return {
-            "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict()
+                "optimizer": self.optimizer.state_dict(),
+                "lr_scheduler": self.lr_scheduler.state_dict()
         }
 
     def set_opt_state(self, opt_state: Dict[str, Dict[str, nn.Parameter]]) -> None:
@@ -291,8 +299,9 @@ class BaseTrainer:
         # calculate number of bad epochs
         bad_epochs = current_epoch - best_epoch
         # log infos
-        self.logger.info(f"Experiment ---------- {self.exp.exp_group}/{self.exp.exp_name}/{self.exp.run_name} "
-                         f"---------- epoch current/best/bad: {current_epoch}/{best_epoch}/{bad_epochs}")
+        self.logger.info(
+            f"Experiment ---------- {self.exp.exp_group}/{self.exp.exp_name}/{self.exp.run_name} "
+            f"---------- epoch current/best/bad: {current_epoch}/{best_epoch}/{bad_epochs}")
         if bad_epochs >= self.cfg.val.det_best_terminate_after:
             # stop early
             self.logger.info(f"No improvement since {bad_epochs} epochs, end of training.")
@@ -308,8 +317,9 @@ class BaseTrainer:
             Whether or not validation is needed.
         """
         # check if we need to validate
-        do_val = (self.state.current_epoch % self.cfg.val.val_freq == 0 and self.cfg.val.val_freq > -1
-                  and self.state.current_epoch >= self.cfg.val.val_start)
+        do_val = (
+                    self.state.current_epoch % self.cfg.val.val_freq == 0 and self.cfg.val.val_freq > -1
+                    and self.state.current_epoch >= self.cfg.val.val_start)
         # always validate the last epoch
         do_val = do_val or self.state.current_epoch == self.cfg.train.num_epochs
         return do_val
@@ -357,9 +367,9 @@ class BaseTrainer:
         """
         if self.load:
             assert not self.model_mgr.was_loaded, (
-                f"Error: Loading epoch {self.load_ep} but already weights have been loaded. If you load weights for "
-                f"warmstarting, you cannot run if the experiments has already saved checkpoints. Change the run name "
-                f"or use --reset to delete the experiment run.")
+                    f"Error: Loading epoch {self.load_ep} but already weights have been loaded. If you load weights for "
+                    f"warmstarting, you cannot run if the experiments has already saved checkpoints. Change the run name "
+                    f"or use --reset to delete the experiment run.")
             if self.load_model:
                 # load model from file. this would start training from epoch 0, but is usually only used for validation.
                 self.logger.info(f"Loading model from checkpoint file {self.load_model}")
@@ -382,7 +392,7 @@ class BaseTrainer:
         self.timer_train_start = timer()
         self.logger.info(f"Training from {self.state.current_epoch} to {self.cfg.train.num_epochs}")
         self.logger.info("Training Models on devices " + ", ".join([
-            f"{key}: {val.__class__.__name__} {next(val.parameters()).device}"
+                f"{key}: {val.__class__.__name__} {next(val.parameters()).device}"
                 for key, val in self.model_mgr.model_dict.items()]))
 
     def hook_post_train(self) -> None:
@@ -468,7 +478,8 @@ class BaseTrainer:
         for field in fields:
             time_value = self.metrics.meters[field].avg
             time_name_short = str(field).split("/")[-1].split("_")[-1]
-            time_str_list += [time_name_short, f"{time_value * 1000:.2f}ms", f"{time_value / time_total:.1%}"]
+            time_str_list += [time_name_short, f"{time_value * 1000:.2f}ms",
+                              f"{time_value / time_total:.1%}"]
         self.logger.info(" ".join(time_str_list))
 
         # feed step-based metrics to tensorboard and collector
@@ -546,14 +557,15 @@ class BaseTrainer:
             total_train_time = (timer() - self.timer_train_epoch) / 60
             str_step = ("{:" + str(len(str(self.steps_per_epoch))) + "d}").format(epoch_step)
             print_string = "".join([
-                f"E{self.state.current_epoch}[{str_step}/{self.steps_per_epoch}] T {total_train_time:.3f}m ",
-                f"LR {lr:.1e} L {loss:.4f} ",
-                f"Grad {self.state.last_grad_norm:.3e} " if self.state.last_grad_norm != 0 else "",
-                f"{additional_log}" if additional_log is not None else ""])
+                    f"E{self.state.current_epoch}[{str_step}/{self.steps_per_epoch}] T {total_train_time:.3f}m ",
+                    f"LR {lr:.1e} L {loss:.4f} ",
+                    f"Grad {self.state.last_grad_norm:.3e} " if self.state.last_grad_norm != 0 else "",
+                    f"{additional_log}" if additional_log is not None else ""])
             self.logger.info(print_string)
 
         # check GPU / RAM profiling
-        if ((self.state.epoch_step % self.cfg.logging.step_gpu == 0 and self.cfg.logging.step_gpu > 0) or
+        if ((
+                self.state.epoch_step % self.cfg.logging.step_gpu == 0 and self.cfg.logging.step_gpu > 0) or
                 self.state.epoch_step == self.cfg.logging.step_gpu_once and self.cfg.logging.step_gpu_once > 0):
             # get the current profile values
             (gpu_names, total_memory_per, used_memory_per, load_per, ram_total, ram_used, ram_avail
@@ -579,9 +591,10 @@ class BaseTrainer:
             if len(load_per) > 1:
                 multi_load = " [" + ", ".join(f"{load:.0%}" for load in load_per) + "]"
                 multi_mem = " [" + ", ".join(f"{mem:.1f}GB" for mem in used_memory_per) + "]"
-            self.logger.info(f"RAM GB used/avail/total: {ram_used:.1f}/{ram_avail:.1f}/{ram_total:.1f} - "
-                             f"GPU {gpu_names_str} Load: {load_avg:.1%}{multi_load} "
-                             f"Mem: {gpu_mem_used:.1f}GB/{gpu_mem_total:.1f}GB{multi_mem}")
+            self.logger.info(
+                f"RAM GB used/avail/total: {ram_used:.1f}/{ram_avail:.1f}/{ram_total:.1f} - "
+                f"GPU {gpu_names_str} Load: {load_avg:.1%}{multi_load} "
+                f"Mem: {gpu_mem_used:.1f}GB/{gpu_mem_total:.1f}GB{multi_mem}")
 
         # update timings
         other_t = total_step_time - self.timedelta_step_forward - self.timedelta_step_backward
@@ -721,8 +734,10 @@ class BaseTrainer:
                     continue
             # delete safely (don't crash if they don't exist for some reason)
             for file in [self.exp.get_models_file(ep_num), self.exp.get_optimizer_file(ep_num),
-                         self.exp.get_trainerstate_file(ep_num), self.exp.get_metrics_epoch_file(ep_num),
-                         self.exp.get_metrics_step_file(ep_num)] + self.get_files_for_cleanup(ep_num):
+                         self.exp.get_trainerstate_file(ep_num),
+                         self.exp.get_metrics_epoch_file(ep_num),
+                         self.exp.get_metrics_step_file(ep_num)] + self.get_files_for_cleanup(
+                    ep_num):
                 if file.is_file():
                     os.remove(file)
                 else:

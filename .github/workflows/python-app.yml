@@ -29,16 +29,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install torch==1.7.1+cpu torchvision==0.8.2+cpu torchaudio==0.7.2 -f https://download.pytorch.org/whl/torch_stable.html
         pip install flake8 pytest
-        pip install -r requirements.txt        
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: pycodestyle
-      run: |
-        pycodestyle --max-line-length 120 .
+        pip install -r requirements.txt
 #        pylint -s n nntrainer coot tests_nntrainer tests_coot --init-hook "import sys; sys.path.append('.')"
 #    - name: mypy
 #      run: |
@@ -48,3 +39,12 @@ jobs:
         python -m pytest .
 #        python -m tests_nntrainer.integration_train
 #        python -m tests_nntrainer.integration_deter
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: pycodestyle
+      run: |
+        pycodestyle --max-line-length 120 .
