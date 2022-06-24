@@ -1,5 +1,7 @@
 # COOT: Cooperative Hierarchical Transformer for Video-Text Representation Learning
 
+**2022-06-24** (v0.3.4): Bugfixes.
+
 **2021-01-31** (v0.3.3): We publish our Video Captioning code.
 
 **2020-12-31** (v0.2.6):  We release our Deep-Learning Research Framework as open-source to contribute to the DL / CV community. [nntrainer library documentation](nntrainer/README.md)
@@ -49,7 +51,11 @@
 
 ## Installation
 
-We use `python=3.8.5` and `pytorch=1.7.1`. Tested on `Windows 10` and `Ubuntu 18.04`.
+Update: The code also runs with newer versions `python=3.8.13`, `torch=1.11.0`, `cuda=11.3`
+and OS `Ubuntu 20.04`.
+
+Originally the code was tested on `python=3.8.5`, `pytorch=1.7.1` and
+OS `Windows 10` or `Ubuntu 18.04`.
 
 ~~~bash
 git clone https://github.com/gingsi/coot-videotext
@@ -231,7 +237,8 @@ Note: Training is not seeded and the captioning metrics are volatile, train the 
 1. Make sure you installed the updated requirements with `pip install -r requirements.txt`
 1. If you have problems with the `pycocoevalcap` package try uninstalling it and installing it with this command instead: `pip install git+https://github.com/salaniz/pycocoevalcap`
 1. The METEOR metric requires `java`. Either install the latest Java 1.8 through the system (Tested with `Java RE 1.8.0_261`) or install with conda `conda install openjdk`. Make sure your locale is set correct i.e. `echo $LANG` outputs `en_US.UTF-8`
-1. Download and extract: [COOT output Embeddings](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing) ~230mb, [Pretrained Captioning models](https://drive.google.com/file/d/1IV85_DXWx1SJL9ZJuT6Qvvyx8obE9f9x/view?usp=sharing) ~540 mb
+1. Download and extract: [COOT output Embeddings](https://drive.google.com/file/d/1atbI9HaFArNPeZzkvrJ9TnkCAal6gyUQ/view?usp=sharing)
+~760mb, [Pretrained Captioning models](https://drive.google.com/file/d/1IV85_DXWx1SJL9ZJuT6Qvvyx8obE9f9x/view?usp=sharing) ~550 mb
 1. To reproduce the original MART results, you will need the input features, see next chapter for setup.
 
 ~~~bash
@@ -334,7 +341,10 @@ Preloading features is disabled by default. If you enable it and get "OSError: T
 
 ### Java meteor metric is crashing
 
-Run `python meteor_test.py` to reproduce the problem. Run `java -version` to see your java version. Install `java JRE 1.8.0_281` or greater if you are admin. Alternatively run `conda install openjdk` to install java into your conda environment.
+Run `python meteor_test.py` to reproduce the problem.
+Run `java -version` to see your java version.
+Install `java JRE 1.8.0_281` or greater if you are admin.
+Alternatively run `conda install openjdk` to install java into your conda environment.
 
 Make sure the locale in the system is correct. `echo $LANG` should output `en_US.UTF-8`. Run `locale -a` to see if this language is installed. If not, install it. Run `export LANG="en_US.UTF-8"` and test meteor again. To change the language permanently, edit the `/etc/default/locale` file or alternatively add the command to your `.bashrc`file if you don't have sudo.
 
