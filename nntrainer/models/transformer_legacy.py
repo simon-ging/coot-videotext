@@ -17,7 +17,8 @@ from nntrainer.initialization import init_network
 from nntrainer.models.activations import ActivationConfig, ActivationConst, make_activation_module
 from nntrainer.models.encoder import make_encoder_module
 from nntrainer.models.mlp import MLP, MLPConfig
-from nntrainer.models.normalizations import NormalizationConfig, NormalizationConst, make_normalization_module
+from nntrainer.models.normalizations import NormalizationConfig, NormalizationConst,\
+    make_normalization_module
 from nntrainer.models.poolers import PoolerConfig, PoolerConst, make_pooler_module
 from nntrainer.typext import ConfigClass, ConstantHolder
 
@@ -32,7 +33,8 @@ class TransformerConfig(ConfigClass):
 
     def __init__(self, config: Dict[str, Any]) -> None:
         self.name: str = config.pop("name")
-        self.output_dim: int = config.pop("output_dim")  # output dim must be specified for future modules in the chain
+        self.output_dim: int = config.pop(
+                "output_dim")  # output dim must be specified for future modules in the chain
         self.dropout_input: float = config.pop("dropout_input")
         self.norm_input: str = config.pop("norm_input")
         self.positional_encoding: str = config.pop("positional_encoding")
@@ -122,7 +124,6 @@ class TransformerLegacy(nn.Module):
         assert feature_dim is not None, error_txt
         assert feature_dim > 0, error_txt
         self.input_dim = feature_dim
-        self.cfg: TransformerConfig = cfg
 
         # dropout the input
         self.input_dropout = None
@@ -135,10 +136,10 @@ class TransformerLegacy(nn.Module):
         # convert input with FC
         self.input_fc = None
         if cfg.use_input_fc:
-            self.input_fc = MLP(feature_dim, cfg.input_fc_config)
+            self.input_fc = MLP(self.input_dim, cfg.input_fc_config)
             input_dim = cfg.input_fc_config.output_dim
         else:
-            input_dim = feature_dim
+            input_dim = self.input_dim
         self.input_dim_transformed = input_dim
 
         # create local cls token adder (invidual CLS vector for each network)
@@ -150,24 +151,16 @@ class TransformerLegacy(nn.Module):
         self.embedding = make_encoder_module(input_dim, cfg.positional_encoding)
 
         # self-attention transformer
-        assert input_dim == cfg.selfatn.hidden_dim, (f"Input dim at this point of {input_dim} must match transformer"
-                                                     f"dim of {cfg.selfatn.hidden_dim}")
-        transformer_class = TransformerEncoder
-
-        self.tf = transformer_class(self.cfg.selfatn)
-
-        # # subspace disabled for now
-        # self.tf = SubspaceTransformerEncoder(
-        #     cfg.num_layers, input_dim, cfg.num_heads,
-        #     cfg.pointwise_ff_dim,
-        #     cfg.dropout, cfg.activation, cfg.atn_ss_subspace,
-        #     cfg.atn_ss_kernels, use_cuda=use_cuda)
+        assert input_dim == cfg.selfatn.hidden_dim, (
+                f"Input dim at this point of {input_dim} must match transformer"
+                f"dim of {cfg.selfatn.hidden_dim}")
+        self.tf = TransformerEncoder(cfg.selfatn)
 
         # build transformer for context
         self.use_context = cfg.use_context
         self.tf_context = None
         if self.use_context:
-            self.tf_context = transformer_class(cfg.crossatn)
+            self.tf_context = TransformerDecoder(cfg.crossatn)
 
         # use another FC on output before pooling
         self.output_fc = None
@@ -185,8 +178,8 @@ class TransformerLegacy(nn.Module):
                 input_dim *= cfg.pooler_config.num_layers
         self.output_dim = input_dim
         self.linear_out = None
-        if self.cfg.linear_out:
-            self.linear_out = nn.Linear(self.cfg.output_dim, self.cfg.output_dim, bias=False)
+        if cfg.linear_out:
+            self.linear_out = nn.Linear(cfg.output_dim, cfg.output_dim, bias=False)
 
         # run the initializer
         init_network(self, cfg.weight_init_type, cfg.weight_init_std)
@@ -248,7 +241,7 @@ class TransformerLegacy(nn.Module):
             # (batch, seq, new_dim)
 
         # apply transformer
-        features = self.tf(features, features, features, mask)
+        features = self.tf(features, mask)
         # print("after transformer", features.shape, len(atns), atns[0].shape)
 
         # (batch, seq, new_dim)
@@ -267,7 +260,7 @@ class TransformerLegacy(nn.Module):
             # here we have to actually mask the query
             mask_ctx = mask
 
-            ctx = self.tf_context(hidden_state, features, features, mask_ctx)
+            ctx = self.tf_context(hidden_state, features, mask_ctx)
             # output is size 1, remove the dim for pooling
             # print(f"context out {ctx.shape}")
 
@@ -321,7 +314,8 @@ class LearnableClsToken(nn.Module):
         #       f"{self.cls_param.std():.9f}")
         batch, _seq_len, _d_model = features.shape
         # add cls token to features
-        features = th.cat([self.cls_param.unsqueeze(0).unsqueeze(0).repeat(batch, 1, 1), features], dim=1)
+        features = th.cat([self.cls_param.unsqueeze(0).unsqueeze(0).repeat(batch, 1, 1), features],
+                          dim=1)
         assert th.all(features[0, 0, :] == self.cls_param)
         # add Falses to beginning of the mask
         zeros = (self.fixed_ones.unsqueeze(0).repeat(batch, 1) * 0).bool()  # shape (batch, 1)
@@ -332,51 +326,71 @@ class LearnableClsToken(nn.Module):
         return features, mask, lengths
 
 
-class TransformerEncoder(nn.Module):
-    """
-    Transformer Encoder.
-    """
-
+class TransformerBase(nn.Module):
     def __init__(self, cfg: TransformerEncoderConfig):
         super().__init__()
 
         self.cfg = cfg
         assert self.cfg.num_layers > 0, f"{self.cfg.num_layers} layers in transformer is invalid"
         self.encoder_layers = nn.ModuleList(
-            [TransformerEncoderLayer(
-                self.cfg.hidden_dim, self.cfg.num_heads, self.cfg.pointwise_ff_dim, self.cfg.dropout,
-                self.cfg.activation.name, activation_cfg=self.cfg.activation, norm_name=self.cfg.norm.name,
-                norm_cfg=self.cfg.norm)
-                for _ in range(self.cfg.num_layers)])
+                [TransformerEncoderLayer(
+                        self.cfg.hidden_dim, self.cfg.num_heads, self.cfg.pointwise_ff_dim,
+                        self.cfg.dropout,
+                        self.cfg.activation.name, activation_cfg=self.cfg.activation,
+                        norm_name=self.cfg.norm.name,
+                        norm_cfg=self.cfg.norm) for _ in range(self.cfg.num_layers)])
 
-    def forward(self, query, key, value, mask):
+    def forward(self, *args):
+        raise NotImplementedError()
+
+
+class TransformerEncoder(TransformerBase):
+    def forward(self, x, mask):
         """
+        Here, query, key and value are the same (self-attention)
+
+        Args:
+            x: (batch_size, seq_len, d_model)
+            mask: (batch_size, seq_len)
+
+        Returns:
+            output (batch_size, seq_len, d_model)
+        """
+        batch_size, seq_len, _embed_dim = x.shape
+
+        mask_expanded = mask.unsqueeze(1).expand(batch_size, seq_len, seq_len)
+
+        output = x
+        for encoder_layer in self.encoder_layers:
+            output = encoder_layer(output, output, output, mask_expanded)
+        return output
+
+
+class TransformerDecoder(TransformerBase):
+    """
+    Transformer Decoder.
+    """
+
+    def forward(self, query, key_value, mask):
+        """
+        Here we have a vector for the query (source) and a vector for key and value (target).
+        For multiple layers, only the query changes.
+
         Args:
             query: (batch_size, query_len, d_model)
-            key: (batch_size, key_len, d_model)
-            value: (batch_size, key_len, d_model)
+            key_value: (batch_size, key_len, d_model)
             mask: (batch_size, key_len)
 
         Returns:
-            output (batch_size, query_len, d_model)
+            output (batch_size, seq_len, d_model)
         """
         batch_size, query_len, _embed_dim = query.shape
-        batch_size, key_len, _embed_dim = key.shape
-        # for this transformer architecture, mask needs to be expanded
-
-        # NOT squared instead of expanded:
-        # having entire rows be zero means the softmax will be uniform.
-        # the query will never attend to masked keys, and useless masked query
-        # parts can be discarded on the output pool
-
+        batch_size, key_len, _embed_dim = key_value.shape
         mask_expanded = mask.unsqueeze(1).expand(batch_size, query_len, key_len)
-        # print(mask_expanded.shape)
-        # (batch_size, query_len, key_len) dtype bool
-
-        sources = query
+        output = query
         for encoder_layer in self.encoder_layers:
-            sources = encoder_layer(query, key, value, mask_expanded)
-        return sources
+            output = encoder_layer(output, key_value, key_value, mask_expanded)
+        return output
 
 
 class TransformerEncoderLayer(nn.Module):
@@ -386,7 +400,8 @@ class TransformerEncoderLayer(nn.Module):
 
     def __init__(
             self, d_model: int, num_heads: int, d_ff: int, dropout_prob: float = 0.,
-            activation_name: str = ActivationConst.GELU, activation_cfg: Optional[ActivationConfig] = None,
+            activation_name: str = ActivationConst.GELU,
+            activation_cfg: Optional[ActivationConfig] = None,
             norm_name: str = NormalizationConst.LAYERNORM_COOT,
             norm_cfg: Optional[NormalizationConfig] = None):
         super().__init__()
@@ -394,11 +409,12 @@ class TransformerEncoderLayer(nn.Module):
         if d_ff == 0:
             d_ff = d_model
         self.self_attention_layer = Sublayer(
-            MultiHeadAttention(num_heads, d_model, dropout_prob),
-            d_model, norm_name=norm_name, norm_cfg=norm_cfg)
+                MultiHeadAttention(num_heads, d_model, dropout_prob),
+                d_model, norm_name=norm_name, norm_cfg=norm_cfg)
         self.pointwise_feedforward_layer = Sublayer(
-            PointwiseFeedForwardNetwork(d_ff, d_model, dropout_prob, activation_name, activation_cfg=activation_cfg),
-            d_model, norm_name=norm_name, norm_cfg=norm_cfg)
+                PointwiseFeedForwardNetwork(d_ff, d_model, dropout_prob, activation_name,
+                                            activation_cfg=activation_cfg),
+                d_model, norm_name=norm_name, norm_cfg=norm_cfg)
         self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, query, key, value, sources_mask):
@@ -427,7 +443,8 @@ class Sublayer(nn.Module):
     Add Residual and Layernorm to the given layer.
     """
 
-    def __init__(self, sublayer, d_model: int, norm_name: str, norm_cfg: Optional[NormalizationConfig]):
+    def __init__(self, sublayer, d_model: int, norm_name: str,
+                 norm_cfg: Optional[NormalizationConfig]):
         super().__init__()
 
         self.sublayer = sublayer
@@ -472,7 +489,8 @@ class MultiHeadAttention(nn.Module):
 
         self.attention = None
 
-    def forward(self, query, key, value, mask_expanded: Optional[th.BoolTensor] = None, _layer_cache=None):
+    def forward(self, query, key, value, mask_expanded: Optional[th.BoolTensor] = None,
+                _layer_cache=None):
         """
         value_len must be equal to key_len
         query_len is the output length
@@ -492,14 +510,17 @@ class MultiHeadAttention(nn.Module):
 
         d_head = d_model // self.num_heads
 
-        query_projected = self.query_projection(query)  # shape (batch_size, query_len, num_heads, d_head)
+        query_projected = self.query_projection(
+                query)  # shape (batch_size, query_len, num_heads, d_head)
         key_projected = self.key_projection(key)  # shape (batch_size, key_len, num_heads, d_head)
-        value_projected = self.value_projection(value)  # shape (batch_size, key_len, num_heads, d_head)
+        value_projected = self.value_projection(
+                value)  # shape (batch_size, key_len, num_heads, d_head)
 
         batch_size, key_len, d_model = key_projected.size()
         batch_size, value_len, d_model = value_projected.size()
 
-        query_heads = query_projected.view(batch_size, query_len, self.num_heads, d_head).transpose(1, 2)
+        query_heads = query_projected.view(batch_size, query_len, self.num_heads, d_head).transpose(
+                1, 2)
         # print("query_heads", query_heads.shape)
         # (batch_size, num_heads, query_len, d_head)
 
@@ -507,7 +528,8 @@ class MultiHeadAttention(nn.Module):
         # print("key_heads", key_heads.shape)
         # (batch_size, num_heads, key_len, d_head)
 
-        value_heads = value_projected.view(batch_size, value_len, self.num_heads, d_head).transpose(1, 2)
+        value_heads = value_projected.view(batch_size, value_len, self.num_heads, d_head).transpose(
+                1, 2)
         # print("value_heads", value_heads.shape)
         # (batch_size, num_heads, key_len, d_head)
 
@@ -519,7 +541,8 @@ class MultiHeadAttention(nn.Module):
             mask_expanded_per_head = mask_expanded.unsqueeze(1).expand_as(attention_weights)
             # print("mask_expanded_per_head", mask_expanded_per_head.shape)
             # shape (batch_size, num_heads, query_len, key_len)
-            attention_weights = attention_weights.masked_fill(mask_expanded_per_head, -nntrainer.typext.INF)
+            attention_weights = attention_weights.masked_fill(mask_expanded_per_head,
+                                                              -nntrainer.typext.INF)
             # print("attention_weights", attention_weights.shape)
             # shape (batch_size, num_heads, query_len, query_len)
 
@@ -567,11 +590,11 @@ class PointwiseFeedForwardNetwork(nn.Module):
         super().__init__()
 
         self.feed_forward = nn.Sequential(
-            nn.Linear(d_model, d_ff),
-            nn.Dropout(dropout_prob),
-            make_activation_module(activation_name, activation_cfg),
-            nn.Linear(d_ff, d_model),
-            nn.Dropout(dropout_prob),
+                nn.Linear(d_model, d_ff),
+                nn.Dropout(dropout_prob),
+                make_activation_module(activation_name, activation_cfg),
+                nn.Linear(d_ff, d_model),
+                nn.Dropout(dropout_prob),
         )
 
     def forward(self, x):

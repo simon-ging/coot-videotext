@@ -102,12 +102,13 @@ class RetrievalModelManager(models.BaseModelManager):
 
             # compute video context
             vid_context, _ = net_vid_local(batch.vid_feat, batch.vid_feat_mask, batch.vid_feat_len, None)
-            if net_vid_global.use_context:
+            if net_vid_global_config.use_context:
                 # need context for cross-attention later
                 if net_vid_global_config.name == models.TransformerTypesConst.RNN_LEGACY:
                     # need special context for RNN
                     vid_context_hidden = vid_context.unsqueeze(0)
-                    vid_context_hidden = vid_context_hidden.repeat(net_vid_global_config.selfatn.num_layers, 1, 1)
+                    vid_context_hidden = vid_context_hidden.repeat(
+                            net_vid_global_config.selfatn.num_layers, 1, 1)
                 else:
                     # otherwise regular context for attention
                     vid_context_hidden = vid_context

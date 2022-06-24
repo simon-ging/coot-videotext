@@ -8,6 +8,9 @@ from nntrainer.models import TransformerEncoder, TransformerEncoderConfig
 
 
 # dont change these or else the test will break
+from nntrainer.models.transformer_legacy import TransformerDecoder
+
+
 BATCH_SIZE = 3
 QUERY_LEN = 8
 KEY_LEN = 2 * QUERY_LEN
@@ -39,7 +42,7 @@ def test_transformers() -> None:
     mask[2, QUERY_LEN // 2:] = True
 
     # do first forward pass of self-attention
-    output = tenc(query, query, query, mask)
+    output = tenc(query, mask)
     assert output.shape == query.shape, f"query shape {query.shape}, output shape {output.shape}"
 
     # modify the query
@@ -55,20 +58,23 @@ def test_transformers() -> None:
     truth = th.Tensor([[1, 1, 1, 1, 1, 1, 1, 1], [0, 0, 0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 1, 1, 1, 1]]).bool()
 
     # # input modified output to the transformer and see if everything is fine
-    mod_output = tenc(query_new, query_new, query_new, mask)
+    mod_output = tenc(query_new, mask)
     is_different = ((output - mod_output) ** 2).mean(-1) > 1e-8
     assert th.all(is_different == truth), f"Transformer doesn't mask correctly! {is_different}"
 
     # for cross-attention, should be able to replace key and value with something random with same results
     # only difference: if we change only the last query item in batch sequence 0, only this output element will change
     # as the keys stay the same.
+    tdec = TransformerDecoder(cfg)
+    tdec.eval()
+
     truth_cross = truth.clone()
     truth_cross[0, :-1] = False
     key = th.randn((BATCH_SIZE, KEY_LEN, HIDDEN_DIM))
     cross_mask = th.ones((BATCH_SIZE, KEY_LEN)).bool()
     cross_mask[:, :QUERY_LEN] = mask
-    output = tenc(query, key, key, cross_mask)
-    mod_output = tenc(query_new, key, key, cross_mask)
+    output = tdec(query, key, cross_mask)
+    mod_output = tdec(query_new, key, cross_mask)
     is_different = ((output - mod_output) ** 2).mean(-1) > 1e-8
     assert th.all(is_different == truth_cross), f"Transformer doesn't mask correctly:\n{is_different}"
 

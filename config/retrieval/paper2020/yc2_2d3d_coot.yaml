@@ -168,7 +168,7 @@ saving:
     save_opt_state: true
 # ---------- Technical PyTorch settings ----------
 use_cuda: true
-use_multi_gpu: true
+use_multi_gpu: false
 cudnn_enabled: true
 cudnn_benchmark: true
 cudnn_deterministic: false

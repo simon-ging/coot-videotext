@@ -5,28 +5,23 @@ import ctypes
 import multiprocessing
 import os
 import random
-import subprocess
-import time
-import traceback
-from timeit import default_timer as timer
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Tuple, Mapping, Sequence, List
 
 import GPUtil
 import numpy as np
 import psutil
 import torch as th
 import torch.backends.cudnn as cudnn
-import tqdm
 from torch import cuda
 
 
 # ---------- Multiprocessing ----------
 
 MAP_TYPES: Dict[str, Any] = {
-    'int': ctypes.c_int,
-    'long': ctypes.c_long,
-    'float': ctypes.c_float,
-    'double': ctypes.c_double
+        'int': ctypes.c_int,
+        'long': ctypes.c_long,
+        'float': ctypes.c_float,
+        'double': ctypes.c_double
 }
 
 
@@ -75,7 +70,8 @@ def set_seed(seed: int, cudnn_deterministic: bool = False, cudnn_benchmark: bool
     cudnn.benchmark = cudnn_benchmark
 
 
-def get_truncnorm_tensor(shape: Tuple[int], *, mean: float = 0, std: float = 1, limit: float = 2) -> th.Tensor:
+def get_truncnorm_tensor(shape: Tuple[int], *, mean: float = 0, std: float = 1,
+                         limit: float = 2) -> th.Tensor:
     """
     Create and return normally distributed tensor, except values with too much deviation are discarded.
 
@@ -96,7 +92,8 @@ def get_truncnorm_tensor(shape: Tuple[int], *, mean: float = 0, std: float = 1, 
     return tmp.gather(-1, ind).squeeze(-1).mul_(std).add_(mean)
 
 
-def fill_tensor_with_truncnorm(input_tensor: th.Tensor, *, mean: float = 0, std: float = 1, limit: float = 2) -> None:
+def fill_tensor_with_truncnorm(input_tensor: th.Tensor, *, mean: float = 0, std: float = 1,
+                               limit: float = 2) -> None:
     """
     Fill given input tensor with a truncated normal dist.
 
@@ -114,7 +111,8 @@ def fill_tensor_with_truncnorm(input_tensor: th.Tensor, *, mean: float = 0, std:
 
 # ---------- Profiling ----------
 
-def profile_gpu_and_ram() -> Tuple[List[str], List[float], List[float], List[float], float, float, float]:
+def profile_gpu_and_ram() -> Tuple[
+    List[str], List[float], List[float], List[float], float, float, float]:
     """
     Profile GPU and RAM.
 
@@ -165,13 +163,16 @@ def _get_gputil_info():
 
     gpus = GPUtil.getGPUs()
     attr_list = [
-        {'attr': 'id', 'name': 'ID'}, {'attr': 'name', 'name': 'Name'},
-        {'attr': 'temperature', 'name': 'Temp', 'suffix': 'C', 'transform': lambda x: x, 'precision': 0},
-        {'attr': 'load', 'name': 'GPU util.', 'suffix': '% GPU', 'transform': lambda x: x * 100,
-         'precision': 1},
-        {'attr': 'memoryUtil', 'name': 'Memory util.', 'suffix': '% MEM', 'transform': lambda x: x * 100,
-         'precision': 1}, {'attr': 'memoryTotal', 'name': 'Memory total', 'suffix': 'MB', 'precision': 0},
-        {'attr': 'memoryUsed', 'name': 'Memory used', 'suffix': 'MB', 'precision': 0}
+            {'attr': 'id', 'name': 'ID'}, {'attr': 'name', 'name': 'Name'},
+            {'attr': 'temperature', 'name': 'Temp', 'suffix': 'C', 'transform': lambda
+                x: x, 'precision': 0},
+            {'attr': 'load', 'name': 'GPU util.', 'suffix': '% GPU', 'transform': lambda x: x * 100,
+             'precision': 1},
+            {'attr': 'memoryUtil', 'name': 'Memory util.', 'suffix': '% MEM', 'transform': lambda
+                x: x * 100,
+             'precision': 1},
+            {'attr': 'memoryTotal', 'name': 'Memory total', 'suffix': 'MB', 'precision': 0},
+            {'attr': 'memoryUsed', 'name': 'Memory used', 'suffix': 'MB', 'precision': 0}
     ]
     gpu_strings = [''] * len(gpus)
     gpu_info = []
@@ -198,7 +199,7 @@ def _get_gputil_info():
                 attr_str = attr
             else:
                 raise TypeError('Unhandled object type (' + str(
-                    type(attr)) + ') for attribute \'' + attrDict[
+                        type(attr)) + ') for attribute \'' + attrDict[
                                     'name'] + '\'')
 
             attr_str += attr_suffix
@@ -217,9 +218,9 @@ def _get_gputil_info():
                 attr_str = ('{0:' + 's}').format(attr)
             else:
                 raise TypeError(
-                    'Unhandled object type (' + str(
-                        type(attr)) + ') for attribute \'' + attrDict[
-                        'name'] + '\'')
+                        'Unhandled object type (' + str(
+                                type(attr)) + ') for attribute \'' + attrDict[
+                            'name'] + '\'')
             attr_str += attr_suffix
             gpu_info[gpuIdx][attr_name] = attr
             gpu_strings[gpuIdx] += '| ' + attr_str + ' '
@@ -238,3 +239,40 @@ def count_parameters(model, verbose=True):
     if verbose:
         print(f"Parameters total: {n_all}, frozen: {n_frozen}")
     return n_all, n_frozen
+
+
+def edit_moduledot_in_state_keys(state, remove: bool = True):
+    """
+    When using a model wrapped with nn.DataParallel or nn.DistributedDataParallel,
+    the state dict keys must additionally start with "module.", otherwise they
+    must not start with "module.". This function takes care to correct the keys,
+    such that a model saved with DataParallel can be loaded with a normal model,
+    and vice versa.
+
+    Works with nested states e.g. lists or dicts of several model state dicts.
+
+    Args:
+        state: state dict or nested state dict
+        remove: if True, remove module.dot from state dict, else add it.
+
+    Returns:
+        state: state dict without module.dot
+    """
+    if isinstance(state, Sequence):
+        # handle lists
+        return [edit_moduledot_in_state_keys(s, remove=remove) for s in state]
+    elif isinstance(state, Mapping):
+        # handle dicts
+        new_state = {}
+        for key, value in state.items():
+            if key.startswith("module.") and remove:
+                key = key[7:]
+            elif not key.startswith("module.") and not remove:
+                key = f"module.{key}"
+            if isinstance(value, Mapping) or isinstance(value, Sequence):
+                # handle nesting
+                value = edit_moduledot_in_state_keys(value, remove=remove)
+            new_state[key] = value
+        return new_state
+    else:
+        raise ValueError(f"Unexpected type {type(state)}")

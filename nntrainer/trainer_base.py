@@ -110,7 +110,7 @@ class BaseTrainer:
         cudnn.deterministic = self.cfg.cudnn_deterministic
 
         # move models to device
-        for model in self.model_mgr.model_dict.values():
+        for model_name, model in self.model_mgr.model_dict.items():
             try:
                 if self.cfg.use_cuda:
                     if not th.cuda.is_available():
@@ -119,6 +119,7 @@ class BaseTrainer:
                     if self.cfg.use_multi_gpu:
                         model = nn.DataParallel(model)
                     model = model.cuda()
+                    self.model_mgr.model_dict[model_name] = model
             except RuntimeError as e:
                 raise RuntimeError(f"RuntimeError when putting model {type(model)} to cuda with DataParallel "
                                    f"{self.cfg.use_multi_gpu}: {model.__class__.__name__}") from e
@@ -381,7 +382,8 @@ class BaseTrainer:
         self.timer_train_start = timer()
         self.logger.info(f"Training from {self.state.current_epoch} to {self.cfg.train.num_epochs}")
         self.logger.info("Training Models on devices " + ", ".join([
-            f"{key}: {next(val.parameters()).device}" for key, val in self.model_mgr.model_dict.items()]))
+            f"{key}: {val.__class__.__name__} {next(val.parameters()).device}"
+                for key, val in self.model_mgr.model_dict.items()]))
 
     def hook_post_train(self) -> None:
         """

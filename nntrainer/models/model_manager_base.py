@@ -11,6 +11,7 @@ import torch as th
 from torch import nn
 
 import nntrainer.trainer_configs
+from nntrainer.utils_torch import edit_moduledot_in_state_keys
 
 
 class BaseModelManager:
@@ -99,25 +100,29 @@ class BaseModelManager:
                 new_state = {}
                 for param_name, param in this_state.items():
                     for replace_from, replace_to in {
-                        "input_norm.": "norm_input.",
-                        "input_fc.": "input_fc.mlp.",
-                        # "norm_input.gain": "norm_input.weight",
-                        # "layer_normalization.gain": "layer_normalization.weight",
-                        "pooler.genpool": "pooler.pools.0.genpool"
+                            "input_norm.": "norm_input.",
+                            "input_fc.": "input_fc.mlp.",
+                            # "norm_input.gain": "norm_input.weight",
+                            # "layer_normalization.gain": "layer_normalization.weight",
+                            "pooler.genpool": "pooler.pools.0.genpool"
                     }.items():
                         param_name = param_name.replace(replace_from, replace_to)
                     new_state[param_name] = param
+                new_state = edit_moduledot_in_state_keys(new_state, not self.cfg.use_multi_gpu)
                 self.model_dict[model_name].load_state_dict(new_state)
             return
         # backwards compatibility to recurrent_transformer (original MART repository style checkpoints)
         if sorted(list(state.keys())) == ["epoch", "model", "model_cfg", "opt"]:
             state_dict = state["model"]
-            print(f"Backward compatible loading for recurrent_transformer epoch {state['epoch']} with "
-                  f"{sum([np.product(param.shape) for param in state_dict.values()])} parameters")
+            print(
+                    f"Backward compatible loading for recurrent_transformer epoch {state['epoch']} with "
+                    f"{sum([np.product(param.shape) for param in state_dict.values()])} parameters")
+            state_dict = edit_moduledot_in_state_keys(state_dict, not self.cfg.use_multi_gpu)
             self.model_dict['model'].load_state_dict(state_dict)
             return
         # newest version of loading. keys in the state correspond to keys in the model_dict.
         for model_name, state_dict in state.items():
+            state_dict = edit_moduledot_in_state_keys(state_dict, not self.cfg.use_multi_gpu)
             self.model_dict[model_name].load_state_dict(state_dict)
             # sep = "\n"
             # print(f"Loaded model: {model_name}params:\n{sep.join(name for name in state_dict.keys())}")
@@ -148,9 +153,9 @@ class BaseModelManager:
             if self.cfg.optimizer.weight_decay_for_bias and 'bias' in key:
                 decay_mult = 0.0
             params += [{
-                'params': value,
-                'decay_mult': decay_mult,
-                'lr_mult': 1.0
+                    'params': value,
+                    'decay_mult': decay_mult,
+                    'lr_mult': 1.0
             }]
             param_names += [key]
             params_flat += [value]
