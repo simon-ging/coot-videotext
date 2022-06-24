@@ -1,0 +1,31 @@
+# declare all files binary
+*.* binary
+
+# redeclare following files as text
+# md py txt json tsv csv sh ini ipynb yaml yml xml iml log css html js gitignore gitattributes bat rst tex htm info meta tid
+*.[mM][dD] text -binary
+*.[pP][yY] text -binary
+*.[tT][xX][tT] text -binary
+*.[jJ][sS][oO][nN] text -binary
+*.[tT][sS][vV] text -binary
+*.[cC][sS][vV] text -binary
+*.[sS][hH] text -binary
+*.[iI][nN][iI] text -binary
+*.[iI][pP][yY][nN][bB] text -binary
+*.[yY][aA][mM][lL] text -binary
+*.[yY][mM][lL] text -binary
+*.[xX][mM][lL] text -binary
+*.[iI][mM][lL] text -binary
+*.[lL][oO][gG] text -binary
+*.[cC][sS][sS] text -binary
+*.[hH][tT][mM][lL] text -binary
+*.[jJ][sS] text -binary
+*.[gG][iI][tT][iI][gG][nN][oO][rR][eE] text -binary
+*.[gG][iI][tT][aA][tT][tT][rR][iI][bB][uU][tT][eE][sS] text -binary
+*.[bB][aA][tT] text -binary
+*.[rR][sS][tT] text -binary
+*.[tT][eE][xX] text -binary
+*.[hH][tT][mM] text -binary
+*.[iI][nN][fF][oO] text -binary
+*.[mM][eE][tT][aA] text -binary
+*.[tT][iI][dD] text -binary
