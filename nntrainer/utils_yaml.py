@@ -9,6 +9,8 @@ from collections import Mapping as CollectionsMapping
 
 import yaml
 
+from nntrainer.typext import PathType
+
 
 def load_yaml_config_file(yaml_file: Union[str, Path]) -> Dict[str, Any]:
     """
@@ -118,7 +120,7 @@ def convert_dict_to_yaml(input_dict: Dict[str, Any], indent_spaces: int = 4, ind
     return "\n".join(ret_list)
 
 
-def dump_yaml_config_file(filename: str, config_dict: Dict[str, Any]) -> None:
+def dump_yaml_config_file(filename: PathType, config_dict: Dict[str, Any]) -> None:
     """
     Store dictionary as YAML file. Changes indent to 4, formats strings with quotes.
 

@@ -15,15 +15,15 @@ import inspect
 import json
 from collections import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Dict, List, Optional, Tuple, Union, cast, KeysView, ItemsView, ValuesView
 
 import numpy as np
 import torch as th
 from pydantic import BaseModel
 
-
 INF = 32752  # infinity expressed in float16, this is large enough s.t. exp(-INF) == 0
 TENSOR_TYPES = (th.Tensor, np.ndarray)
+PathType = Union[str, Path]
 
 
 class ConfigClass:
@@ -100,6 +100,7 @@ class SaveableBaseModel(BaseModel):
         """
         return cls(**json.load(Path(file).open("rt", encoding="utf8")))
 
+
     class Config:
         # configure pydantic.BaseModel to fail on assigning wrongly typed values
         validate_assignment = True
@@ -107,7 +108,8 @@ class SaveableBaseModel(BaseModel):
 
 # ---------- TypedNamedTuple: Class for explicit data modeling. ----------
 
-def _nested_shape_check(field_name: str, tensor_container: Any, shape: [List[Optional[int]]]) -> None:
+def _nested_shape_check(field_name: str, tensor_container: Any,
+                        shape: [List[Optional[int]]]) -> None:
     """
     Check if input tensor matches the given shape. If input is iterable or mapping, recurse into it and check
     if all contained tensors match the given shape.
@@ -136,7 +138,8 @@ def _nested_shape_check(field_name: str, tensor_container: Any, shape: [List[Opt
         for _, tensor_subcontainer in tensor_container.items():
             _nested_shape_check(field_name, tensor_subcontainer, shape)
     else:
-        raise TypeError(f"Tensor shape check on class {type(tensor_container)} not supported, field {field_name}.")
+        raise TypeError(
+                f"Tensor shape check on class {type(tensor_container)} not supported, field {field_name}.")
 
 
 class TypedNamedTuple(BaseModel):
@@ -202,7 +205,7 @@ class TypedNamedTuple(BaseModel):
         """
         return super().dict(**kwargs)
 
-    def keys(self) -> List[str]:
+    def keys(self) -> KeysView:
         """
         Get list of constant keys.
 
@@ -211,7 +214,7 @@ class TypedNamedTuple(BaseModel):
         """
         return self.dict().keys()
 
-    def items(self) -> List[str]:
+    def items(self) -> ItemsView:
         """
         Get list of constant keys.
 
@@ -220,7 +223,7 @@ class TypedNamedTuple(BaseModel):
         """
         return self.dict().items()
 
-    def values(self) -> List[Any]:
+    def values(self) -> ValuesView:
         """
         Return constant values.
 
@@ -255,6 +258,7 @@ class TypedNamedTuple(BaseModel):
             if isinstance(value, th.Tensor):
                 # update pydantic BaseModel with setattr
                 setattr(self, name, value.cuda(non_blocking=non_blocking))
+
 
     class Config:
         # allow torch tensors etc.
@@ -457,7 +461,8 @@ class ConstantHolder(metaclass=_StringRepr):
         return f"ConstantHolder {cls.__name__}: {cls.items()}"
 
     @classmethod
-    def __init_subclass__(cls, allowed_types: Optional[Union[type, List[type], Tuple[type, ...]]] = None) -> None:
+    def __init_subclass__(
+            cls, allowed_types: Optional[Union[type, List[type], Tuple[type, ...]]] = None) -> None:
         """
         Setup properties for the public interface when this class is inherited.
 
@@ -499,7 +504,7 @@ class ConstantHolder(metaclass=_StringRepr):
                 if isinstance(allowed_types, list):
                     allowed_types = tuple(allowed_types)
                 assert isinstance(value, allowed_types), (
-                    f"Constant: {key} in class: {cls.__name__} must be of type {allowed_types}")
+                        f"Constant: {key} in class: {cls.__name__} must be of type {allowed_types}")
 
             # update class properties
             cls._keys[cls.__name__].append(key)
@@ -510,4 +515,5 @@ class ConstantHolder(metaclass=_StringRepr):
         """
         Raise error when trying to instance a ConstantHolder class.
         """
-        raise RuntimeError(f"Do not instance this class, it's a ConstantHolder: {type(self).__name__}")
+        raise RuntimeError(
+                f"Do not instance this class, it's a ConstantHolder: {type(self).__name__}")

@@ -48,7 +48,7 @@ class BaseTrainer:
         load_epoch: Whether to load a specific epoch.
         load_model: Load model given by file path.
         is_test: Removes some parts that are not needed during inference for speedup.
-        exp_files_handler: Optionally provide an instance to overwrite the standard ExperimentFilesHandler
+        exp_files_handler: Optionally provide instance to overwrite standard ExperimentFilesHandler
     """
 
     def __init__(
@@ -73,7 +73,7 @@ class BaseTrainer:
         # save config
         self.cfg: trainer_configs.DefaultExperimentConfig = cfg
 
-        # create experiment helper for directories, if it wasn't already overwritten by the base trainer
+        # create experiment helper for directories, if it wasn't overwritten by the base trainer
         self.exp = exp_files_handler
         if self.exp is None:
             self.exp = ExperimentFilesHandler(model_type, exp_group, exp_name, run_name,
@@ -81,7 +81,7 @@ class BaseTrainer:
             self.exp.setup_dirs(reset=reset)
 
         # setup logging
-        assert logger is None or log_level is None, "Cannot specify both loglevel and logger together."
+        assert logger is None or log_level is None, "Cannot specify loglevel and logger together."
         if logger is None:
             if log_level is None:
                 self.log_level = utils.LogLevelsConst.INFO
@@ -110,8 +110,8 @@ class BaseTrainer:
 
         # logs some infos
         self.logger.info(
-            f"Running on cuda: {self.cfg.use_cuda}, multi-gpu: {self.cfg.use_multi_gpu}, "
-            f"gpus found: {th.cuda.device_count()}, fp16 amp: {self.cfg.fp16_train}.")
+                f"Running on cuda: {self.cfg.use_cuda}, multi-gpu: {self.cfg.use_multi_gpu}, "
+                f"gpus found: {th.cuda.device_count()}, fp16 amp: {self.cfg.fp16_train}.")
         cudnn.enabled = self.cfg.cudnn_enabled
         cudnn.benchmark = self.cfg.cudnn_benchmark
         cudnn.deterministic = self.cfg.cudnn_deterministic
@@ -129,8 +129,8 @@ class BaseTrainer:
                     self.model_mgr.model_dict[model_name] = model
             except RuntimeError as e:
                 raise RuntimeError(
-                    f"RuntimeError when putting model {type(model)} to cuda with DataParallel "
-                    f"{self.cfg.use_multi_gpu}: {model.__class__.__name__}") from e
+                        f"RuntimeError when putting model {type(model)} to cuda with DataParallel "
+                        f"{self.cfg.use_multi_gpu}: {model.__class__.__name__}") from e
 
         # create metrics writer
         self.metrics = metric.MetricsWriter(self.exp)
@@ -203,10 +203,10 @@ class BaseTrainer:
         # compute steps per epoch
         self.train_loader_length = train_loader_length
 
-        # The following fields must be set by the inheriting trainer. In special cases (like multiple optimizers
-        # with GANs), override methods get_opt_state and set_opt_state instead.
-        self.optimizer: Optimizer = None
-        self.lr_scheduler: lr_scheduler.LRScheduler = None
+        # The following fields must be set by the inheriting trainer. In special cases (like
+        # multiple optimizers with GANs), override methods get_opt_state and set_opt_state instead.
+        self.optimizer: Optional[Optimizer] = None
+        self.lr_scheduler: Optional[lr_scheduler.LRScheduler] = None
 
         # setup timers and other stuff that does not need to be saved (temporary trainer state)
         self.timer_step: float = 0
@@ -289,7 +289,7 @@ class BaseTrainer:
         Returns:
             Whether or not training should be stopped.
         """
-        # this is called after the post epoch hook which increased the epoch counter, so subtract one more
+        # this is called after post epoch hook which increased the epoch counter, so subtract one
         current_epoch = self.state.current_epoch - 1
         # find best epoch
         best_epoch = self.exp.find_best_epoch()
@@ -300,8 +300,8 @@ class BaseTrainer:
         bad_epochs = current_epoch - best_epoch
         # log infos
         self.logger.info(
-            f"Experiment ---------- {self.exp.exp_group}/{self.exp.exp_name}/{self.exp.run_name} "
-            f"---------- epoch current/best/bad: {current_epoch}/{best_epoch}/{bad_epochs}")
+                f"Experiment ---------- {self.exp.exp_group}/{self.exp.exp_name}/{self.exp.run_name} "
+                f"---------- epoch current/best/bad: {current_epoch}/{best_epoch}/{bad_epochs}")
         if bad_epochs >= self.cfg.val.det_best_terminate_after:
             # stop early
             self.logger.info(f"No improvement since {bad_epochs} epochs, end of training.")
@@ -317,9 +317,9 @@ class BaseTrainer:
             Whether or not validation is needed.
         """
         # check if we need to validate
-        do_val = (
-                    self.state.current_epoch % self.cfg.val.val_freq == 0 and self.cfg.val.val_freq > -1
-                    and self.state.current_epoch >= self.cfg.val.val_start)
+        do_val = (self.state.current_epoch % self.cfg.val.val_freq == 0
+                  and self.cfg.val.val_freq > -1
+                  and self.state.current_epoch >= self.cfg.val.val_start)
         # always validate the last epoch
         do_val = do_val or self.state.current_epoch == self.cfg.train.num_epochs
         return do_val
@@ -372,17 +372,19 @@ class BaseTrainer:
                     f"has already saved checkpoints. Change the run name "
                     f"or use --reset to delete the experiment run.")
             if self.load_model:
-                # load model from file. used for validation or to start training from a pretrained checkpoint.
+                # load model from file. used for validation or
+                # to start training from pretrained checkpoint.
                 self.logger.info(f"Loading model from checkpoint file {self.load_model}")
                 model_state = th.load(str(self.load_model))
                 self.model_mgr.set_model_state(model_state)
             else:
-                # load model given an epoch. also reload metrics and optimization to correctly continue training.
+                # load model given an epoch. also reload metrics and
+                # optimization to correctly continue training.
                 self.logger.info(f"Loading Ep {self.load_ep}.")
                 self._load_checkpoint(self.load_ep)
                 if not self.is_test:
-                    # In training, add 1 to current epoch after loading since if we loaded epoch N, we are training
-                    # epoch N+1 now. In validation, we are validating on epoch N.
+                    # In training, add 1 to current epoch after loading since if we loaded epoch N,
+                    # we are training epoch N+1 now. In validation, we are validating epoch N.
                     self.state.current_epoch += 1
 
     def hook_pre_train(self) -> None:
@@ -401,14 +403,16 @@ class BaseTrainer:
         Hook called on training finish. Log info on total num epochs trained and duration.
         """
         self.logger.info(f"In total, training {self.state.current_epoch} epochs took "
-                         f"{self.state.time_total:.3f}s ({self.state.time_total - self.state.time_val:.3f}s "
+                         f"{self.state.time_total:.3f}s "
+                         f"({self.state.time_total - self.state.time_val:.3f}s "
                          f"train / {self.state.time_val:.3f}s val)")
 
     # ---------- Public hooks that run every epoch ----------
 
     def hook_pre_train_epoch(self) -> None:
         """
-        Hook called before training an epoch. Set models to train, times start, reset meters, log info.
+        Hook called before training an epoch.
+        Set models to train, start timing start, reset meters, log info.
         """
         # set model to train mode
         self.model_mgr.set_all_models_train()
@@ -423,7 +427,7 @@ class BaseTrainer:
 
     def hook_pre_val_epoch(self) -> None:
         """
-        Hook called before validating an epoch. Set models to val, times start.
+        Hook called before validating an epoch. Set models to val, start timing.
         """
         # set models to validation mode
         self.model_mgr.set_all_models_eval()
@@ -489,7 +493,7 @@ class BaseTrainer:
         # save checkpoint and metrics
         self._save_checkpoint()
 
-        # cleanup files depending on saving config (default just keep best and last epoch, discard all others)
+        # cleanup files depending on saving config (default only keeps best and last epoch)
         self._cleanup_files()
 
         # increase epoch counter
@@ -518,7 +522,7 @@ class BaseTrainer:
 
     def hook_post_step(
             self, epoch_step: int, loss: th.Tensor, lr: float, additional_log: Optional[str] = None,
-            disable_grad_clip: bool = False) -> bool:
+            disable_grad_clip: bool = False) -> None:
         """
         Hook called after one optimization step.
 
@@ -531,9 +535,6 @@ class BaseTrainer:
             lr: Training learning rate.
             additional_log: Additional string to print in the train step log.
             disable_grad_clip: Disable gradient clipping if it's done already somewhere else
-
-        Returns:
-            Whether log output should be printed in this step or not.
         """
         # compute total time for this step and restart the timer
         total_step_time = timer() - self.timer_step
@@ -558,16 +559,19 @@ class BaseTrainer:
             total_train_time = (timer() - self.timer_train_epoch) / 60
             str_step = ("{:" + str(len(str(self.steps_per_epoch))) + "d}").format(epoch_step)
             print_string = "".join([
-                    f"E{self.state.current_epoch}[{str_step}/{self.steps_per_epoch}] T {total_train_time:.3f}m ",
+                    f"E{self.state.current_epoch}[{str_step}/{self.steps_per_epoch}] "
+                    f"T {total_train_time:.3f}m ",
                     f"LR {lr:.1e} L {loss:.4f} ",
-                    f"Grad {self.state.last_grad_norm:.3e} " if self.state.last_grad_norm != 0 else "",
+                    f"Grad {self.state.last_grad_norm:.3e} "
+                    if self.state.last_grad_norm != 0 else "",
                     f"{additional_log}" if additional_log is not None else ""])
             self.logger.info(print_string)
 
         # check GPU / RAM profiling
-        if ((
-                self.state.epoch_step % self.cfg.logging.step_gpu == 0 and self.cfg.logging.step_gpu > 0) or
-                self.state.epoch_step == self.cfg.logging.step_gpu_once and self.cfg.logging.step_gpu_once > 0):
+        if ((self.state.epoch_step % self.cfg.logging.step_gpu == 0
+             and self.cfg.logging.step_gpu > 0) or
+                self.state.epoch_step == self.cfg.logging.step_gpu_once
+                and self.cfg.logging.step_gpu_once > 0):
             # get the current profile values
             (gpu_names, total_memory_per, used_memory_per, load_per, ram_total, ram_used, ram_avail
              ) = utils_torch.profile_gpu_and_ram()
@@ -593,9 +597,9 @@ class BaseTrainer:
                 multi_load = " [" + ", ".join(f"{load:.0%}" for load in load_per) + "]"
                 multi_mem = " [" + ", ".join(f"{mem:.1f}GB" for mem in used_memory_per) + "]"
             self.logger.info(
-                f"RAM GB used/avail/total: {ram_used:.1f}/{ram_avail:.1f}/{ram_total:.1f} - "
-                f"GPU {gpu_names_str} Load: {load_avg:.1%}{multi_load} "
-                f"Mem: {gpu_mem_used:.1f}GB/{gpu_mem_total:.1f}GB{multi_mem}")
+                    f"RAM GB used/avail/total: {ram_used:.1f}/{ram_avail:.1f}/{ram_total:.1f} - "
+                    f"GPU {gpu_names_str} Load: {load_avg:.1%}{multi_load} "
+                    f"Mem: {gpu_mem_used:.1f}GB/{gpu_mem_total:.1f}GB{multi_mem}")
 
         # update timings
         other_t = total_step_time - self.timedelta_step_forward - self.timedelta_step_backward
@@ -607,7 +611,8 @@ class BaseTrainer:
         self.metrics.update_meter(Metrics.TRAIN_GRAD_CLIP, self.state.last_grad_norm)
         # update LR
         self.metrics.update_meter(Metrics.TRAIN_LR, lr)
-        if self.state.epoch_step % self.cfg.logging.step_train == 0 and self.cfg.logging.step_train > 0:
+        if (self.state.epoch_step % self.cfg.logging.step_train == 0
+                and self.cfg.logging.step_train > 0):
             # loss update necessary
             self.metrics.update_meter(Metrics.TRAIN_LOSS, loss.item())
 
@@ -626,8 +631,8 @@ class BaseTrainer:
 
     def _check_if_current_score_is_best(self, current: float, best: float) -> bool:
         """
-        Compare given current and best and return True if the current is better than best + some threshold.
-        Depending on config, smaller or bigger values are better and threshold is absolute or relative.
+        Compare given current and best, return True if current is better than best + threshold.
+        Depending on config, smaller or bigger is better and threshold is absolute or relative.
 
         Args:
             current: Current score.
