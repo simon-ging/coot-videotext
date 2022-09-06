@@ -369,7 +369,12 @@ python -c "import h5py; h5=h5py.File('/path/to/video_feat_100m.h5'); print(h5[li
 # which means 308 features at 1 FPS (so a 308 second video)
 # with hidden dimension of 512
 
-# now create a new yaml config and change `dataset_train.name`
+~~~
+
+### Run the model
+
+~~~bash
+# create a new yaml config and change `dataset_train.name`
 # start with yc2_100m_coot.yaml
 # or yc2_100m_coot_vidclip_mart.yaml for captioning
 
@@ -386,8 +391,6 @@ python precompute_text.py youcook2 --cuda
 # as in chapter "Train and validate MART on COOT embeddings"
 
 ~~~
-
-
 
 ## Troubleshooting
 
