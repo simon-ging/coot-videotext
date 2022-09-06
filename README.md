@@ -33,6 +33,7 @@
   * [Setup data for original MART (trained on video features)](#setup-data-for-original-mart-trained-on-video-features)
   * [Train MART on your own computed embeddings](#train-mart-on-your-own-computed-embeddings)
   * [Rebuild MART cache](#rebuild-mart-cache)
+* [Running your own video dataset on the trained models](#running-your-own-video-dataset-on-the-trained-models)
 * [Troubleshooting](#troubleshooting)
   * [Training / inference crashes](#training--inference-crashes)
   * [Java meteor metric is crashing](#java-meteor-metric-is-crashing)
