@@ -329,6 +329,65 @@ Note that if you have designed your own COOT with different embedding dimensions
 Download [glove]( http://nlp.stanford.edu/data/glove.6B.zip) extract file  `pretrained_models/glove.6B.300d.txt` run `python mart_build_vocab.py youcook2` and
 `python mart_build_vocab.py activitynet`
 
+## Running your own video dataset on the trained models
+
+### Extract features
+
+Note: For the model trained on **ActivityNet** we used the features provided by the authors of the CMHSE paper https://github.com/Sha-Lab/CMHSE and we currently don't provide a way on how to extract similar features.
+
+To extract the features to run the model trained on **YouCook2**:
+
+~~~bash
+# make sure ffmpeg is installed on your system, e.g. with
+conda install -y -c conda-forge ffmpeg
+# install the ffmpeg wrapper for python and pillow to read jpeg
+pip install ffmpeg-python pillow
+
+# setup your videos like /path/to/videos/video_name.mp4
+# extract cropped frames
+# optionally run less videos with --max_videos 20
+python extract_frames_from_videos.py --fps 16 -x 256 -y 256 \
+-i /path/to/videos /path/to/frames --num_workers 8 --write
+# output should look like /path/to/frames/videos/video_name/frame_0000000001.jpg
+
+# download s3d model
+mkdir pretrained_models
+wget https://www.rocq.inria.fr/cluster-willow/amiech/howto100m/s3d_howto100m.pth
+wget https://www.rocq.inria.fr/cluster-willow/amiech/howto100m/s3d_dict.npy
+mv s3d_howto100m.pth pretrained_models
+mv s3d_dict.npy pretrained_models
+
+# extract features, reduce batch_size if the GPU runs OOM or use CPU (slow)
+# note the dataloader is single threaded and should be changed into a
+# torch dataloader in case you want to work on very many videos
+python extract_100m_features.py /path/to/frames \ /path/to/video_feat_100m.h5 --cuda --num_cuda 1 --batch_size 16 
+
+# test the h5 file
+python -c "import h5py; h5=h5py.File('/path/to/video_feat_100m.h5'); print(h5[list(h5.keys())[0]].shape)"
+# should output something like (308, 512)
+# which means 308 features at 1 FPS (so a 308 second video)
+# with hidden dimension of 512
+
+# now create a new yaml config and change `dataset_train.name`
+# start with yc2_100m_coot.yaml
+# or yc2_100m_coot_vidclip_mart.yaml for captioning
+
+# to do retrieval with text, create the text features
+# by modifying the scripts below
+python data_read_youcook2_meta.py
+python precompute_text.py youcook2 --cuda
+# then run the retrieval evaluation code
+# from chapter "Train and validate Video Retrieval"
+
+# to do captioning, create the retrieval embeddings
+# as in chapter "Extract your own embeddings"
+# then evaluate the COOT+MART model
+# as in chapter "Train and validate MART on COOT embeddings"
+
+~~~
+
+
+
 ## Troubleshooting
 
 ### Training / inference crashes
