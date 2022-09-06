@@ -375,7 +375,7 @@ python -c "import h5py; h5=h5py.File('/path/to/video_feat_100m.h5'); print(h5[li
 
 ~~~bash
 # create a new yaml config and change `dataset_train.name`
-# start with yc2_100m_coot.yaml
+# start with yc2_100m_coot.yaml for retrieval
 # or yc2_100m_coot_vidclip_mart.yaml for captioning
 
 # to do retrieval with text, create the text features
